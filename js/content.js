@@ -97,21 +97,23 @@ export const PLUGINS = {
         subtitle: 'TONAL BALANCE REFERENCE',
         blurb: [
             'Put Conform on your master bus and it draws the long-term spectrum of the mix over a target band: pink noise, or reference tracks you load. Audio passes through untouched.',
-            'Save references to a library and load them in any project. Solo a region to hear just the lows or the air. In the plugin, the analysis runs on the reference tracks themselves; this page shows a browser preview of the Fine view against pink noise.',
+            'This is the plugin itself, measuring a full mix against Modern EDM, a target saved from three reference tracks. Click a region name to solo it, switch to pink noise, or drop in your own mix.',
         ],
         points: [
             ['Compare by shape', 'Both curves are offset so their 50 Hz–10 kHz average sits at 0 dB, so you never have to match loudness with the reference.'],
-            ['Broad, Fine and Stereo', 'One meter per region, a 1/6-octave curve, or stereo width across the spectrum against your references.'],
+            ['A library of targets', 'Analyse an album or a stack of genre references once, save it, and load it in any project. The band shows how far those tracks stray, not just their average.'],
         ],
         viz: 'conform',
         columns: 0,
+        target: 'targets/Modern EDM.conform',
         footer: [
+            { param: 'Target', kind: 'cycle' },
             { param: 'Speed', kind: 'cycle', prefix: 'Speed: ' },
             { param: 'Tolerance', kind: 'drag', prefix: 'Tolerance ' },
             { kind: 'reset' },
         ],
         controls: [],
-        source: 'drums',
+        source: 'demo',
     },
 };
 

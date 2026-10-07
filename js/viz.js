@@ -231,118 +231,146 @@ export class ConstellationViz {
     }
 }
 
-// ---- Conform: long-term 1/6-octave spectrum against the pink-noise band ----
+// ---- Conform: the plugin's own measurement against its target band (Fine view) ----
+//
+// The live curve comes from ConformEffect on the audio thread (wew_meter); the band from the
+// plugin's target code in the main-thread module, for pink noise or a loaded .conform file.
+// Click a region name to solo it (the plugin's crossovers, on the audio thread).
 
 const REGIONS = [[20, 250, 'Low'], [250, 2000, 'Low-Mid'], [2000, 10000, 'High-Mid'], [10000, 20000, 'High']];
-const SPEEDS = [1, 3, 10, Infinity];
+const DB_TOP = 36, DB_BOT = -50; // the editor's window around the 50 Hz–10 kHz normalisation
 
 export class ConformViz {
-    constructor(canvas, spectra, fx) {
-        Object.assign(this, { canvas, spectra, fx });
-        this.f0 = 20; this.f1 = 20000;
-        this.cols = Math.round(Math.log2(this.f1 / this.f0) * 6);
-        this.reset();
-        this.last = performance.now();
+    constructor(canvas, fx) {
+        Object.assign(this, { canvas, fx });
+        const ex = fx.exports;
+        this.n = ex.conform_cols();
+        this.hz = Float32Array.from({ length: this.n }, (_, c) => ex.conform_col_hz(c));
+        this.curvePtr = ex.wew_malloc(4 * (1 + 6 * this.n));
+        this.solo = 0;
+        this.reference = null; // {name, tracks}
+        this.labels = []; // hit boxes, set while drawing
+        canvas.addEventListener('click', (e) => {
+            const r = canvas.getBoundingClientRect();
+            const hit = this.labels.find((l) => e.clientX - r.left >= l.x0 && e.clientX - r.left <= l.x1 && e.clientY - r.top <= l.y1);
+            if (!hit) return;
+            this.solo ^= 1 << hit.region;
+            fx.call('conform_set_solo', this.solo);
+        });
+        canvas.style.cursor = 'pointer';
     }
 
-    reset() {
-        this.avg = new Float64Array(this.cols);
-        this.count = 0;
-        this.has = false;
+    // Loads a .conform target with the plugin's decoder; returns {name, tracks}.
+    async loadTarget(url) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`${url}: ${res.status}`);
+        const ex = this.fx.exports;
+        const tracks = this.fx.withBytes(await res.arrayBuffer(), (p, len) => ex.conform_load_target(p, len));
+        if (tracks < 0) throw new Error(`${url} is not a Conform target`);
+        this.reference = { name: this.fx.string(ex.conform_target_name()), tracks };
+        return this.reference;
     }
 
-    colF(c) { return this.f0 * Math.pow(this.f1 / this.f0, (c + 0.5) / this.cols); }
+    reset() { this.fx.call('conform_reset_average'); }
 
-    #measure(dt) {
-        const s = this.spectra;
-        if (!s.live || s.rms < 0.001) return; // below -60 dBFS is ignored, as in the plugin
-        const tau = SPEEDS[Math.round(this.fx.get(2))] ?? 3;
-        this.count++;
-        const a = tau === Infinity ? 1 / this.count : 1 - Math.exp(-dt / tau);
-        for (let c = 0; c < this.cols; c++) {
-            const lo = this.f0 * Math.pow(this.f1 / this.f0, c / this.cols), hi = lo * Math.pow(2, 1 / 6);
-            const p = Math.pow(10, s.band(s.post, lo, hi) / 10);
-            this.avg[c] = this.has ? this.avg[c] + (p - this.avg[c]) * a : p;
-        }
-        this.has = true;
+    note() {
+        if (Math.round(this.fx.get(0)) === 1 && this.reference)
+            return `Target: ${this.reference.name} (${this.reference.tracks} track${this.reference.tracks === 1 ? '' : 's'})`;
+        return 'Target: pink noise (−3 dB/oct)';
     }
 
-    // dB per column, offset so the 50 Hz–10 kHz mean is 0
-    #normalise(values) {
-        let sum = 0, n = 0;
-        for (let c = 0; c < this.cols; c++) {
-            const f = this.colF(c);
-            if (f >= 50 && f <= 10000) { sum += values[c]; n++; }
-        }
-        const m = sum / n;
-        return values.map((v) => v - m);
+    #band() {
+        const ex = this.fx.exports, n = this.n;
+        const count = ex.conform_target_curve(Math.round(this.fx.get(0)), this.fx.get(3), this.curvePtr);
+        if (!count) return null;
+        const f = this.fx.floats(this.curvePtr, 3 * n);
+        return { lo: f.subarray(0, n), mid: f.subarray(n, 2 * n), hi: f.subarray(2 * n) };
     }
 
-    draw(active) {
-        const now = performance.now();
-        const dt = Math.min(0.1, (now - this.last) / 1000);
-        this.last = now;
-        if (active) this.#measure(dt);
-
+    draw() {
         const { g, w, h } = fitCanvas(this.canvas);
+        const n = this.n, hz = this.hz;
         g.fillStyle = '#0b0b0d';
         g.fillRect(0, 0, w, h);
-        const xOf = (f) => (Math.log(f / this.f0) / Math.log(this.f1 / this.f0)) * w;
-        const top = 34, bottom = h - 22, range = 24;
-        const yOf = (db) => top + (bottom - top) * (0.5 - db / (2 * range));
+        const top = 40, bottom = h - 26;
+        const xOf = (f) => (Math.log(f / 20) / Math.log(1000)) * w;
+        const x = (c) => (c === 0 ? 0 : c === n - 1 ? w : xOf(hz[c]));
+        const y = (db) => top + ((DB_TOP - db) / (DB_TOP - DB_BOT)) * (bottom - top);
 
-        const tol = this.fx.get(3) / 100;
-        const target = this.#normalise(Array.from({ length: this.cols }, (_, c) => -3 * Math.log2(this.colF(c) / 1000)));
-        const live = this.has ? this.#normalise(Array.from(this.avg, (p) => 10 * Math.log10(p + 1e-20))) : null;
+        const band = this.#band();
+        const m = this.fx.meter;
+        const live = m && m[0] > 0 ? m.subarray(2, 2 + n) : null;
+        const signal = m && m[1] > 0;
 
-        // Regions, with labels lit when the mix sits outside the band there
-        g.font = '12px Cousine, monospace';
-        REGIONS.forEach(([lo, hi, name], i) => {
-            if (i) { g.fillStyle = GRID; g.fillRect(Math.round(xOf(lo)), top - 10, 1, bottom - top + 10); }
-            let out = false;
-            if (live) {
-                let d = 0, n = 0;
-                for (let c = 0; c < this.cols; c++) {
-                    const f = this.colF(c);
-                    if (f >= lo && f < hi) { d += live[c] - target[c]; n++; }
-                }
-                out = n && Math.abs(d / n) > 3 * tol;
+        // Band: brightest along its centre, as in the editor
+        if (band) {
+            const strip = (a, b, alpha) => {
+                g.beginPath();
+                for (let c = 0; c < n; c++) g.lineTo(x(c), y(a[c]));
+                for (let c = n - 1; c >= 0; c--) g.lineTo(x(c), y(b[c]));
+                g.closePath();
+                g.fillStyle = `rgba(212,175,55,${alpha})`;
+                g.fill();
+            };
+            const inner = (a, b) => a.map((v, c) => (v + b[c]) / 2);
+            strip(band.hi, band.lo, 0.12);
+            strip(inner(band.hi, band.mid), inner(band.lo, band.mid), 0.22);
+            g.lineWidth = 1;
+            g.strokeStyle = 'rgba(212,175,55,0.55)';
+            for (const curve of [band.lo, band.hi]) {
+                g.beginPath();
+                for (let c = 0; c < n; c++) g.lineTo(x(c), y(curve[c]));
+                g.stroke();
             }
-            g.fillStyle = out ? '#f0c448' : 'rgba(180,180,188,0.7)';
-            const cx = (xOf(lo) + xOf(Math.min(hi, this.f1))) / 2;
-            g.fillText(name, cx - g.measureText(name).width / 2, 20);
-        });
+        }
 
-        // Target band
-        g.beginPath();
-        for (let c = 0; c < this.cols; c++) g.lineTo(xOf(this.colF(c)), yOf(target[c] + 3 * tol));
-        for (let c = this.cols - 1; c >= 0; c--) g.lineTo(xOf(this.colF(c)), yOf(target[c] - 3 * tol));
-        g.closePath();
-        const band = g.createLinearGradient(0, 0, 0, h);
-        band.addColorStop(0, 'rgba(212,175,55,0.38)');
-        band.addColorStop(1, 'rgba(212,175,55,0.22)');
-        g.fillStyle = band;
-        g.fill();
-        g.strokeStyle = 'rgba(212,175,55,0.6)';
-        g.lineWidth = 1;
-        g.stroke();
+        // Regions: dividers, labels (bright when the mix sits outside the band), solo
+        g.font = '12px Cousine, monospace';
+        this.labels = [];
+        REGIONS.forEach(([lo, hi, name], r) => {
+            if (r) { g.fillStyle = GRID; g.fillRect(Math.round(xOf(lo)), top - 6, 1, bottom - top + 6); }
+            let out = false;
+            if (band && live) {
+                let l = 0, b0 = 0, b1 = 0, k = 0;
+                for (let c = 0; c < n; c++) if (hz[c] >= lo && hz[c] < hi) { l += live[c]; b0 += band.lo[c]; b1 += band.hi[c]; k++; }
+                out = k > 0 && (l < b0 || l > b1);
+            }
+            const solo = !!(this.solo & (1 << r));
+            const label = name;
+            const tw = g.measureText(label).width, cx = (xOf(lo) + xOf(hi)) / 2;
+            const x0 = cx - tw / 2 + 9;
+            // Solo button: an "S" in a circle, filled when soloed
+            g.beginPath();
+            g.arc(x0 - 11, 20, 7, 0, Math.PI * 2);
+            g.strokeStyle = solo ? '#cdd0da' : 'rgba(180,180,188,0.45)';
+            g.fillStyle = solo ? '#cdd0da' : 'transparent';
+            if (solo) g.fill();
+            g.stroke();
+            g.font = '10px Cousine, monospace';
+            g.fillStyle = solo ? '#111' : 'rgba(180,180,188,0.7)';
+            g.fillText('S', x0 - 14, 23.5);
+            g.font = '12px Cousine, monospace';
+            g.fillStyle = out ? '#f0c448' : solo ? '#cdd0da' : 'rgba(180,180,188,0.7)';
+            g.fillText(label, x0, 24);
+            this.labels.push({ region: r, x0: x0 - 20, x1: x0 + tw + 4, y1: 34 });
+        });
 
         // Live curve
         if (live) {
             g.beginPath();
-            for (let c = 0; c < this.cols; c++) g.lineTo(xOf(this.colF(c)), yOf(Math.max(-range, Math.min(range, live[c]))));
-            g.strokeStyle = PLATINUM;
+            for (let c = 0; c < n; c++) g.lineTo(x(c), y(Math.max(DB_BOT, Math.min(DB_TOP, live[c]))));
+            g.strokeStyle = signal ? PLATINUM : 'rgba(205,208,218,0.4)';
             g.lineWidth = 2;
             g.stroke();
         } else {
             g.fillStyle = DIM;
-            const t = active ? 'Listening…' : 'Press play to measure';
+            const t = this.fx.meter ? 'Listening…' : 'Press play to measure';
             g.fillText(t, w / 2 - g.measureText(t).width / 2, (top + bottom) / 2);
         }
         g.fillStyle = DIM;
         for (const f of [50, 100, 200, 500, 1000, 2000, 5000, 10000]) {
             const t = f >= 1000 ? `${f / 1000}k` : `${f}`;
-            g.fillText(t, xOf(f) - g.measureText(t).width / 2, h - 6);
+            g.fillText(t, xOf(f) - g.measureText(t).width / 2, h - 8);
         }
     }
 }

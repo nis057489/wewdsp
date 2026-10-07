@@ -4,8 +4,10 @@
 //   {type: 'param', id, value}   set a parameter (already sanitised by the main thread)
 //   {type: 'prepare'}            re-prepare, for parameters that apply on prepare (FFT size)
 //   {type: 'reset'}              clear the effect's internal state
+//   {type: 'call', name, args}   call a plugin export with (instance, ...args)
 //   {type: 'destroy'}            free the instance; the processor then stops
-// and reports {type: 'ready' | 'latency', latency} (samples) back.
+// and reports {type: 'ready' | 'latency', latency} (samples) back. Modules that export
+// wew_meter also get {type: 'meter', data: Float32Array} about 30 times a second.
 
 const IMPORTS = { env: { emscripten_notify_memory_growth() {} } };
 
@@ -26,6 +28,12 @@ class WewEffectProcessor extends AudioWorkletProcessor {
             // Start from the main thread's current values, then any changes queued since
             (params || []).forEach((v, id) => ex.wew_set_param(this.inst, id, v));
             ex.wew_prepare(this.inst);
+            if (ex.wew_meter) {
+                this.meterMax = 4096;
+                this.meterPtr = ex.wew_malloc(this.meterMax * 4);
+                this.meterEvery = Math.max(1, Math.round(sampleRate / 128 / 30));
+                this.meterCount = 0;
+            }
             this.ex = ex;
             this.queue.forEach((m) => this.handle(m));
             this.queue = [];
@@ -45,6 +53,9 @@ class WewEffectProcessor extends AudioWorkletProcessor {
                 break;
             case 'reset':
                 ex.wew_reset(this.inst);
+                break;
+            case 'call':
+                if (typeof ex[m.name] === 'function') ex[m.name](this.inst, ...(m.args || []));
                 break;
             case 'destroy':
                 ex.wew_destroy(this.inst);
@@ -74,6 +85,11 @@ class WewEffectProcessor extends AudioWorkletProcessor {
         ex.wew_process(this.inst, n);
         for (let c = 0; c < out.length; c++) {
             out[c].set(new Float32Array(ex.memory.buffer, ex.wew_output(this.inst, Math.min(c, 1)), n));
+        }
+        if (this.meterPtr && ++this.meterCount >= this.meterEvery) {
+            this.meterCount = 0;
+            const count = ex.wew_meter(this.inst, this.meterPtr, this.meterMax);
+            if (count) this.port.postMessage({ type: 'meter', data: new Float32Array(ex.memory.buffer, this.meterPtr, count).slice() });
         }
         return true;
     }

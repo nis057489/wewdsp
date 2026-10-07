@@ -5,6 +5,9 @@
 //   fx.info.params          // [{name, module, min, max, def, flags}], id = index
 //   fx.set(id, value)       // sanitised (clamped, stepped) like the plugin does; returns it
 //   fx.get(id), fx.format(id, value), fx.latency, fx.onlatency = (samples) => {}
+//   fx.meter, fx.onmeter    // latest wew_meter data from the audio thread, if the plugin has it
+//   fx.call(name, ...args)  // a plugin export on the audio thread's instance
+//   fx.exports              // the main-thread module, with withBytes / floats / string helpers
 //
 // The DSP runs in an AudioWorklet (wew-worklet.js). A second instance of the module on the
 // main thread answers info, sanitising and display text synchronously.
@@ -45,6 +48,8 @@ export class WewEffect {
         this.values = this.info.params.map((p) => p.def);
         this.latency = ex.wew_latency(this.inst);
         this.onlatency = null;
+        this.meter = null;
+        this.onmeter = null;
         this.node = new AudioWorkletNode(ctx, 'wew-effect', {
             numberOfInputs: 1,
             numberOfOutputs: 1,
@@ -54,6 +59,11 @@ export class WewEffect {
             processorOptions: { bytes, params: this.values },
         });
         this.node.port.onmessage = (e) => {
+            if (e.data.type === 'meter') {
+                this.meter = e.data.data;
+                if (this.onmeter) this.onmeter(this.meter);
+                return;
+            }
             if (e.data.latency !== undefined && e.data.latency !== this.latency) {
                 this.latency = e.data.latency;
                 if (this.onlatency) this.onlatency(this.latency);
@@ -67,6 +77,27 @@ export class WewEffect {
         while (mem[end]) end++;
         return new TextDecoder().decode(mem.subarray(ptr, end));
     }
+
+    get exports() { return this.ex; }
+
+    // Copies bytes into the main-thread module for fn(ptr, length); returns fn's result.
+    withBytes(bytes, fn) {
+        const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+        const ptr = this.ex.wew_malloc(u8.length || 1);
+        new Uint8Array(this.ex.memory.buffer, ptr, u8.length).set(u8);
+        try {
+            return fn(ptr, u8.length);
+        } finally {
+            this.ex.wew_free(ptr);
+        }
+    }
+
+    // A copy of n floats at ptr in the main-thread module.
+    floats(ptr, n) { return new Float32Array(this.ex.memory.buffer, ptr, n).slice(); }
+    string(ptr) { return this.#str(ptr); }
+
+    // Calls a plugin export on the audio thread's instance: ex[name](instance, ...args).
+    call(name, ...args) { this.node.port.postMessage({ type: 'call', name, args }); }
 
     param(id) { return this.info.params[id]; }
     paramId(name) { return this.info.params.findIndex((p) => p.name === name); }

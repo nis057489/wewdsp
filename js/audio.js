@@ -9,6 +9,7 @@
 import { WewEffect } from './wew-effect.js';
 
 export const SOURCES = [
+    { id: 'demo', label: 'Demo mix', urls: ['sounds/demo_song.m4a', 'sounds/demo_song.ogg'] },
     { id: 'drums', label: 'Drum loop' },
     { id: 'chords', label: 'Chords' },
     { id: 'bass', label: 'Reese bass' },
@@ -174,8 +175,27 @@ export class Engine {
     }
 
     async #generated(id) {
-        if (!this.buffers.has(id)) this.buffers.set(id, render(id, this.ctx.sampleRate));
+        if (!this.buffers.has(id)) {
+            const src = SOURCES.find((s) => s.id === id);
+            this.buffers.set(id, src?.urls ? this.#fetchAudio(src.urls) : render(id, this.ctx.sampleRate));
+        }
         return this.buffers.get(id);
+    }
+
+    // The first of `urls` the browser can decode (AAC everywhere, Ogg where AAC isn't).
+    async #fetchAudio(urls) {
+        let err;
+        for (const url of urls) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`${url}: ${res.status}`);
+                return await this.ctx.decodeAudioData(await res.arrayBuffer());
+            } catch (e) {
+                err = e;
+            }
+        }
+        this.buffers.delete(this.sourceId);
+        throw err;
     }
 }
 

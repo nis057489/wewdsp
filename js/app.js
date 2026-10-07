@@ -94,7 +94,8 @@ class Rack {
             this.el.append(grid);
         }
         if (cfg.footer) {
-            const bar = h('div', { class: 'rack-bar' }, h('span', { class: 'rack-bar-note' }, 'Target: pink noise'));
+            this.note = h('span', { class: 'rack-bar-note' });
+            const bar = h('div', { class: 'rack-bar' }, this.note);
             const right = h('div', { class: 'rack-bar-right' });
             for (const c of cfg.footer) this.#control(right, c, onchange);
             bar.append(right);
@@ -106,12 +107,16 @@ class Rack {
         switch (cfg.viz) {
             case 'prism': this.viz = new PrismViz(this.canvas, spectra, fx); break;
             case 'constellation': this.viz = new ConstellationViz(this.canvas, spectra, fx, accent); break;
-            case 'conform': this.viz = new ConformViz(this.canvas, spectra, fx); break;
+            case 'conform': this.viz = new ConformViz(this.canvas, fx); break;
             default:
                 this.viz = new SpectrumViz(this.canvas, spectra, accent, {
                     keyMask: this.piano ? () => this.piano.mask() : null,
                     labels: this.piano ? ['DRY', 'TUNED'] : ['DRY', 'WET'],
                 });
+        }
+        if (cfg.target && this.viz.loadTarget) {
+            // Start on the reference target, as if it had been loaded from the library
+            await this.viz.loadTarget(cfg.target).then(() => fx.set(fx.paramId('Target'), 1)).catch(showError);
         }
         observe(this.canvas);
         this.update();
@@ -133,6 +138,7 @@ class Rack {
     update() {
         this.controls.forEach((c) => c.update());
         this.piano?.update();
+        if (this.note && this.viz?.note) this.note.textContent = this.viz.note();
         const on = engine.active === this.slug && engine.playing;
         this.el.classList.toggle('active', engine.active === this.slug);
         this.play.classList.toggle('on', on);
