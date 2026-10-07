@@ -94,7 +94,7 @@ class Rack {
             this.el.append(grid);
         }
         if (cfg.footer) {
-            const bar = h('div', { class: 'rack-bar' }, h('span', { class: 'rack-bar-note' }, 'Target: pink noise (−3 dB/oct)'));
+            const bar = h('div', { class: 'rack-bar' }, h('span', { class: 'rack-bar-note' }, 'Target: pink noise'));
             const right = h('div', { class: 'rack-bar-right' });
             for (const c of cfg.footer) this.#control(right, c, onchange);
             bar.append(right);
@@ -214,7 +214,7 @@ function renderPlugins(plugins, manifest, base) {
                 h('summary', {}, 'Listen: examples run through Garble'),
                 h('ul', {}, cfg.examples.map(([t, src]) => h('li', {}, h('span', {}, t), h('audio', { controls: true, preload: 'none', src }))))) : null,
         );
-        main.append(h('section', { class: cfg.wide ? 'plugin wide' : 'plugin', id: p.slug, style: { '--accent': cfg.accent } }, copy, h('div', { class: 'plugin-rack' }, rack.el)));
+        main.append(h('section', { class: 'plugin', id: p.slug, style: { '--accent': cfg.accent } }, copy, h('div', { class: 'plugin-rack' }, rack.el)));
     });
 }
 

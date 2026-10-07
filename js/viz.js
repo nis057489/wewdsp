@@ -288,7 +288,7 @@ export class ConformViz {
         g.fillStyle = '#0b0b0d';
         g.fillRect(0, 0, w, h);
         const xOf = (f) => (Math.log(f / this.f0) / Math.log(this.f1 / this.f0)) * w;
-        const top = 34, bottom = h - 22, range = 18;
+        const top = 34, bottom = h - 22, range = 24;
         const yOf = (db) => top + (bottom - top) * (0.5 - db / (2 * range));
 
         const tol = this.fx.get(3) / 100;

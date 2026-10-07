@@ -104,7 +104,6 @@ export const PLUGINS = {
             ['Broad, Fine and Stereo', 'One meter per region, a 1/6-octave curve, or stereo width across the spectrum against your references.'],
         ],
         viz: 'conform',
-        wide: true,
         columns: 0,
         footer: [
             { param: 'Speed', kind: 'cycle', prefix: 'Speed: ' },
