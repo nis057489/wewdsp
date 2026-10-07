@@ -84,7 +84,7 @@ export const PLUGINS = {
             'Low orders turn sound into a handful of hard-edged states; high orders are nearly transparent. Cluster blends between clean snapping and a scattered, gated cloud.',
         ],
         points: [
-            ['Order', '2-QAM to 256-QAM: the resolution of the grid every bin is forced onto.'],
+            ['Order', '2-QAM to 4096-QAM: the resolution of the grid every bin is forced onto. 4096-QAM is what Wi-Fi 7 uses.'],
             ['Cluster', 'At 100 % bins snap cleanly. Lower, they scatter in blue noise and fade toward silence when far from a grid point.'],
         ],
         viz: 'constellation',

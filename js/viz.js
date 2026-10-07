@@ -251,8 +251,9 @@ export class ConstellationViz {
 
     draw(active) {
         const { g, w, h } = fitCanvas(this.canvas);
-        const order = Math.round(this.fx.get(0)), cluster = this.fx.get(1);
-        const cols = 1 << Math.ceil(order / 2), rows = 1 << Math.floor(order / 2);
+        // The DSP's grid: round(sqrt(2^order)) levels per axis (constellation.cpp)
+        const order = this.fx.get(0), cluster = this.fx.get(1);
+        const cols = Math.max(2, Math.round(Math.sqrt(Math.pow(2, order)))), rows = cols;
         const size = Math.min(w, h) - 24, x0 = (w - size) / 2, y0 = (h - size) / 2;
         const sx = size / cols, sy = size / rows;
         this.t += 1 / 60;
@@ -277,7 +278,7 @@ export class ConstellationViz {
         }
         // Grid points
         g.globalAlpha = 0.5 + lvl * 0.5;
-        const dot = Math.max(2, Math.min(5, 26 / Math.sqrt(cols * rows)));
+        const dot = Math.max(0.6, Math.min(5, Math.min(sx, sy) * 0.18));
         for (let c = 0; c < cols; c++) {
             for (let r = 0; r < rows; r++) {
                 g.beginPath();
