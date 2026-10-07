@@ -123,58 +123,120 @@ export class SpectrumViz {
     }
 }
 
-// ---- Garble: a prism of colour bands, one per wavelet level, lit by the output's energy ----
+// ---- Garble: the effect's wavelet coefficients (wew_meter), drawn like the plugin's prism ----
+//
+// A port of GarbleView::rebuild_prism (plugins/garble/src/garble_view.cpp): one row per detail
+// band, finest at the top; each block is a coefficient, so block width doubles row by row with
+// the Haar scale. Coefficients quantised to zero are gaps; brightness follows magnitude. Rows
+// past Levels show the approximation, below a gold line; blue ticks mark the Lo/Hi Band range.
 
-const PRISM = ['#e0483a', '#e57e2c', '#e0b02a', '#b8c92c', '#58c43a', '#2fa36f', '#2d8f8f', '#2f6fa8', '#3a4f9a', '#3b3a7a'];
+const FRAME = 1024;
+const ROWS = 10;
+const ROW_RGB = [[224, 72, 58], [229, 126, 44], [224, 176, 42], [184, 201, 44], [88, 196, 58],
+    [47, 163, 111], [45, 143, 143], [47, 111, 168], [58, 79, 154], [59, 58, 122]];
+const PRISM = ROW_RGB.map(([r, g, b]) => `rgb(${r},${g},${b})`); // also the hero's colours
+const PLOT_RGB = [11, 11, 13], BODY_RGB = [17, 17, 17], MARK_RGB = [212, 175, 55], TICK_RGB = [122, 179, 224];
+
+const coeffLevel = (m) => Math.min(1, Math.max(0, (20 * Math.log10(m + 1e-9) + 66) / 60));
 
 export class PrismViz {
-    constructor(canvas, spectra, fx) {
-        Object.assign(this, { canvas, spectra, fx });
-        this.energy = new Float32Array(10);
-        this.t = 0;
+    constructor(canvas, fx) {
+        Object.assign(this, { canvas, fx });
+        this.lastFrame = -1;
+        this.lastChange = 0;
+        this.coeffs = new Float32Array(FRAME);
     }
 
-    draw(active) {
-        const { g, w, h } = fitCanvas(this.canvas);
-        const fx = this.fx, s = this.spectra;
-        const levels = Math.round(fx.get(0)), lo = fx.get(4), hi = fx.get(5);
-        const quant = fx.get(1), ratio = fx.get(2);
-        this.t += 1 / 60;
-        g.fillStyle = '#0b0b0d';
-        g.fillRect(0, 0, w, h);
-        const rows = 10, rh = h / rows;
-        for (let i = 0; i < rows; i++) {
-            // Band i covers an octave, highest first (the finest wavelet detail)
-            const f1 = 16000 / Math.pow(2, i), f0 = f1 / 2;
-            const e = active && s.live ? Math.min(1, Math.max(0, (s.band(s.post, f0, f1) + 90) / 60)) : 0;
-            this.energy[i] += (e - this.energy[i]) * 0.2;
-            const used = i < levels;
-            const inRange = i >= lo && i <= hi;
-            const base = used ? (inRange ? 0.5 : 0.2) : 0.1;
-            const a = Math.min(1, base + this.energy[i] * 0.75);
-            const grad = g.createLinearGradient(0, 0, w, 0);
-            grad.addColorStop(0, PRISM[i]);
-            grad.addColorStop(1, 'rgba(0,0,0,0)');
-            g.globalAlpha = a;
-            g.fillStyle = grad;
-            // Quantise/ratio break the bands into blocks, like coefficients being dropped
-            const blocks = Math.round(1 + quant * 24 + (ratio - 1) * 0.8);
-            if (blocks <= 1) {
-                g.fillRect(0, i * rh, w, rh - 1);
-            } else {
-                const bw = w / blocks;
-                for (let b = 0; b < blocks; b++) {
-                    const keep = Math.sin(b * 12.9898 + i * 78.233 + Math.floor(this.t * 4) * 0.37) * 43758.5453 % 1;
-                    if (Math.abs(keep) > quant * 0.85) g.fillRect(b * bw, i * rh, bw - 1, rh - 1);
-                }
-            }
+    #resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const W = Math.max(1, Math.round(this.canvas.clientWidth * dpr)), H = Math.max(1, Math.round(this.canvas.clientHeight * dpr));
+        if (this.canvas.width !== W || this.canvas.height !== H || !this.img) {
+            this.canvas.width = W;
+            this.canvas.height = H;
+            this.g = this.canvas.getContext('2d');
+            this.img = this.g.createImageData(W, H);
+            this.level = Array.from({ length: ROWS }, () => new Float32Array(W));
+            this.keep = Array.from({ length: ROWS }, () => new Float32Array(W).fill(1));
         }
-        g.globalAlpha = 1;
-        const fade = g.createLinearGradient(0, h - 18, 0, h);
-        fade.addColorStop(0, 'rgba(17,17,17,0)');
-        fade.addColorStop(1, '#111');
-        g.fillStyle = fade;
-        g.fillRect(0, h - 18, w, 18);
+        this.ps = Math.max(1, Math.round(dpr)); // pixels per CSS pixel, for gaps and lines
+        return { W, H };
+    }
+
+    draw() {
+        const { W, H } = this.#resize();
+        const ps = this.ps, px = this.img.data, fx = this.fx;
+
+        // Live while frames keep arriving with signal in them
+        const m = fx.meter, now = performance.now();
+        let energy = 0, levels = Math.round(fx.get(0));
+        if (m && m.length >= 2 + FRAME) {
+            if (m[1] !== this.lastFrame) {
+                this.lastFrame = m[1];
+                this.lastChange = now;
+            }
+            this.coeffs.set(m.subarray(2, 2 + FRAME));
+            for (let i = 0; i < FRAME; i++) energy += this.coeffs[i];
+        }
+        const live = !!m && now - this.lastChange < 500 && energy > 1e-6;
+        if (live) levels = m[0];
+        levels = Math.min(ROWS, Math.max(1, levels));
+        const lo = Math.round(fx.get(4)), hi = Math.round(fx.get(5));
+        const lStart = Math.min(levels, Math.max(0, levels - hi)), lEnd = Math.min(levels, Math.max(0, levels - lo));
+
+        for (let i = 0; i < W * H; i++) {
+            px[i * 4] = PLOT_RGB[0]; px[i * 4 + 1] = PLOT_RGB[1]; px[i * 4 + 2] = PLOT_RGB[2]; px[i * 4 + 3] = 255;
+        }
+        const blend = (i, rgb, a) => {
+            px[i] += (rgb[0] - px[i]) * a;
+            px[i + 1] += (rgb[1] - px[i + 1]) * a;
+            px[i + 2] += (rgb[2] - px[i + 2]) * a;
+        };
+
+        for (let r = 0; r < ROWS; r++) {
+            const detail = r < levels;
+            const n = detail ? FRAME >> (r + 1) : FRAME >> levels; // coefficients in the row
+            const off = detail ? n : 0; // band r starts at N >> (r + 1)
+            const inRange = detail && r >= lStart && r < lEnd;
+            const base = detail ? (inRange ? 0.5 : 0.2) : 0.06; // approximation rows stay dim
+            const gain = detail ? 0.75 : 0.22;
+            const gaps = W / n >= 3 * ps; // separate blocks wider than 3 px
+            const y0 = Math.floor((r * H) / ROWS), y1 = Math.floor(((r + 1) * H) / ROWS) - ps;
+            const lv = this.level[r], kp = this.keep[r], rgb = ROW_RGB[r];
+
+            for (let x = 0; x < W; x++) {
+                const i0 = Math.floor((x * n) / W), i1 = Math.max(i0 + 1, Math.floor(((x + 1) * n) / W));
+                let sum = 0, nz = 0;
+                for (let i = i0; i < i1; i++) {
+                    const v = this.coeffs[off + i];
+                    sum += v;
+                    nz += v > 0;
+                }
+                const cnt = i1 - i0;
+                const target = live ? coeffLevel(sum / cnt) : 0;
+                const alive = live ? nz / cnt : 1;
+                lv[x] += (target - lv[x]) * (target > lv[x] ? 0.5 : 0.15);
+                kp[x] += (alive - kp[x]) * 0.3;
+                if (gaps && Math.floor(((x + 1) * n) / W) !== i0 && x + 1 < W) continue; // last column of a block
+                const a = Math.min(1, base + lv[x] * gain) * (0.12 + 0.88 * kp[x]) * (1 - (0.9 * x) / W);
+                for (let y = y0; y < y1; y++) blend((y * W + x) * 4, rgb, a);
+            }
+            if (inRange)
+                for (let y = y0; y < y1; y++) for (let x = 0; x < 2 * ps; x++) blend((y * W + x) * 4, TICK_RGB, 0.9);
+        }
+
+        // Where the transform stops: a line above the approximation rows
+        if (levels < ROWS) {
+            const y0 = Math.floor((levels * H) / ROWS) - ps;
+            for (let y = y0; y < y0 + ps; y++) for (let x = 0; x < W; x++) blend((y * W + x) * 4, MARK_RGB, 0.9 * (1 - (0.7 * x) / W));
+        }
+
+        // Fade into the editor body over the bottom 18 px
+        const f0 = H - 18 * ps;
+        for (let y = Math.max(0, f0); y < H; y++) {
+            const t = (y - f0) / (18 * ps);
+            for (let x = 0; x < W; x++) blend((y * W + x) * 4, BODY_RGB, t);
+        }
+        this.g.putImageData(this.img, 0, 0);
     }
 }
 
