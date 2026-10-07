@@ -106,7 +106,7 @@ class Rack {
         const accent = cfg.accent;
         switch (cfg.viz) {
             case 'prism': this.viz = new PrismViz(this.canvas, fx); break;
-            case 'constellation': this.viz = new ConstellationViz(this.canvas, spectra, fx, accent); break;
+            case 'constellation': this.viz = new ConstellationViz(this.canvas, fx); break;
             case 'conform': this.viz = new ConformViz(this.canvas, fx); break;
             default:
                 this.viz = new SpectrumViz(this.canvas, spectra, accent, {

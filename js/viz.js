@@ -240,57 +240,72 @@ export class PrismViz {
     }
 }
 
-// ---- Constellate: the QAM grid, with bins clustering onto it or scattering ----
+// ---- Constellate: the effect's constellation (wew_meter), drawn like the plugin's plot ----
+//
+// A port of draw_constellation (plugins/constellate/src/constellate_view.cpp): the faint ideal
+// grid for the current Order, and 128 evenly spaced bins of the left channel after quantisation,
+// in grid units, so cleanly snapped bins sit on grid points and gated ones are pulled inward.
+
+const GRID_SCALE = 0.85; // grid units to the plot's half-size, as kGridScale
 
 export class ConstellationViz {
-    constructor(canvas, spectra, fx, accent) {
-        Object.assign(this, { canvas, spectra, fx, accent });
-        this.points = Array.from({ length: 900 }, () => [Math.random(), Math.random(), Math.random(), Math.random()]);
-        this.t = 0;
+    constructor(canvas, fx) {
+        Object.assign(this, { canvas, fx });
     }
 
-    draw(active) {
+    draw() {
         const { g, w, h } = fitCanvas(this.canvas);
-        // The DSP's grid: round(sqrt(2^order)) levels per axis (constellation.cpp)
-        const order = this.fx.get(0), cluster = this.fx.get(1);
-        const cols = Math.max(2, Math.round(Math.sqrt(Math.pow(2, order)))), rows = cols;
-        const size = Math.min(w, h) - 24, x0 = (w - size) / 2, y0 = (h - size) / 2;
-        const sx = size / cols, sy = size / rows;
-        this.t += 1 / 60;
-        g.fillStyle = '#0b0b0d';
-        g.fillRect(0, 0, w, h);
-        g.strokeStyle = GRID;
+        const size = Math.min(w, h), x0 = (w - size) / 2, y0 = (h - size) / 2;
+        const cx = x0 + size / 2, cy = y0 + size / 2, half = size / 2 - 4;
+        const k = size / 280; // the editor's plot is 280 px
+        g.clearRect(0, 0, w, h);
+
+        // Panel and crosshair
+        g.fillStyle = '#0a0a0a';
         g.beginPath();
-        g.moveTo(x0 + size / 2, y0); g.lineTo(x0 + size / 2, y0 + size);
-        g.moveTo(x0, y0 + size / 2); g.lineTo(x0 + size, y0 + size / 2);
+        g.roundRect(x0, y0, size, size, 6);
+        g.fill();
+        g.strokeStyle = '#252525';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(x0 + 4, cy); g.lineTo(x0 + size - 4, cy);
+        g.moveTo(cx, y0 + 4); g.lineTo(cx, y0 + size - 4);
         g.stroke();
-        const lvl = active && this.spectra.live ? this.spectra.level : 0;
-        // Scattered bins: jitter grows as Cluster falls; brightness follows the signal
-        const spread = (1 - cluster) * 0.5;
-        g.fillStyle = this.accent;
-        for (const p of this.points) {
-            const c = Math.floor(p[0] * cols), r = Math.floor(p[1] * rows);
-            const jx = (Math.sin(this.t * (0.6 + p[2]) + p[3] * 40) * spread + (p[2] - 0.5) * spread) * sx;
-            const jy = (Math.cos(this.t * (0.5 + p[3]) + p[2] * 40) * spread + (p[3] - 0.5) * spread) * sy;
-            const x = x0 + (c + 0.5) * sx + jx, y = y0 + (r + 0.5) * sy + jy;
-            g.globalAlpha = (0.08 + lvl * 0.5) * (0.4 + 0.6 * cluster * p[2]);
-            g.fillRect(x - 1, y - 1, 2, 2);
-        }
-        // Grid points
-        g.globalAlpha = 0.5 + lvl * 0.5;
-        const dot = Math.max(0.6, Math.min(5, Math.min(sx, sy) * 0.18));
-        for (let c = 0; c < cols; c++) {
-            for (let r = 0; r < rows; r++) {
+
+        // Ideal grid: round(sqrt(2^order)) levels per axis (constellation.cpp)
+        const levels = Math.max(2, Math.round(Math.sqrt(Math.pow(2, this.fx.get(0)))));
+        const spacing = (half * 2 * GRID_SCALE) / (levels - 1);
+        const dot = Math.min(1.4 * k, Math.max(0.5, spacing * 0.22));
+        g.fillStyle = '#3c3c42';
+        for (let gy = 0; gy < levels; gy++) {
+            for (let gx = 0; gx < levels; gx++) {
+                const u = -1 + (2 * gx) / (levels - 1), v = -1 + (2 * gy) / (levels - 1);
                 g.beginPath();
-                g.arc(x0 + (c + 0.5) * sx, y0 + (r + 0.5) * sy, dot * (0.7 + lvl * 0.5), 0, Math.PI * 2);
+                g.arc(cx + u * half * GRID_SCALE, cy - v * half * GRID_SCALE, dot, 0, Math.PI * 2);
                 g.fill();
             }
         }
-        g.globalAlpha = 1;
-        g.font = '13px Cousine, monospace';
-        g.fillStyle = 'rgba(180,180,188,0.85)';
+
+        // Live bins
+        const m = this.fx.meter;
+        if (m && m.length > 1) {
+            const n = m[0];
+            for (let i = 0; i < n; i++) {
+                const re = m[1 + i], im = m[1 + n + i];
+                const px = cx + re * half * GRID_SCALE, py = cy - im * half * GRID_SCALE;
+                if (px < x0 || px > x0 + size || py < y0 || py > y0 + size) continue;
+                const t = Math.min(1, Math.hypot(re, im));
+                g.fillStyle = `rgba(${Math.round(80 + 42 * t)},${Math.round(140 + 39 * t)},${Math.round(190 + 34 * t)},0.78)`;
+                g.beginPath();
+                g.arc(px, py, (2 + t * 1.5) * k, 0, Math.PI * 2);
+                g.fill();
+            }
+        }
+
+        g.font = `${Math.round(13 * Math.max(1, k * 0.9))}px Cousine, monospace`;
+        g.fillStyle = 'rgba(180,180,188,0.9)';
         const label = this.fx.format(0);
-        g.fillText(label, x0 + size - g.measureText(label).width - 6, y0 + 18);
+        g.fillText(label, x0 + size - g.measureText(label).width - 12, y0 + 24);
     }
 }
 
