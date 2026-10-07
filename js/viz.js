@@ -123,6 +123,120 @@ export class SpectrumViz {
     }
 }
 
+// ---- Keyfield: the effect's dry and tuned spectra (wew_meter), drawn like the plugin ----
+//
+// A port of KeyfieldView::draw_visualizer (plugins/keyfield/src/keyfield_view.cpp): 512
+// log-spaced columns from the effect, the input in platinum (DRY) and the energy moved to a new
+// pitch in gold (TUNED), with faint lines at the in-key pitches and the region outside Low–High
+// shaded. EXPAND switches 100 Hz–6 kHz to the full 20 Hz–20 kHz, as in the editor.
+
+const KF_MIN_HZ = 20, KF_MAX_HZ = 20000;
+const KF_DRY = [205, 208, 218], KF_TUNED = [240, 196, 72];
+
+export class KeyfieldViz {
+    constructor(canvas, fx, keyMask) {
+        Object.assign(this, { canvas, fx, keyMask });
+        this.expanded = false;
+        this.dry = null;
+        this.tuned = null;
+        this.last = performance.now();
+        this.button = null;
+        canvas.addEventListener('click', (e) => {
+            const r = canvas.getBoundingClientRect(), b = this.button;
+            const x = e.clientX - r.left, y = e.clientY - r.top;
+            if (b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) this.expanded = !this.expanded;
+        });
+    }
+
+    draw() {
+        const { g, w, h } = fitCanvas(this.canvas);
+        const fx = this.fx, m = fx.meter;
+        const level = (amp) => Math.min(1, Math.max(0, (20 * Math.log10(amp + 1e-9) + 72) / 66)); // -72..-6 dB
+
+        // Hold peaks and let them decay (0.82 per frame at the editor's 30 fps)
+        const now = performance.now(), decay = Math.pow(0.82, (now - this.last) / (1000 / 30));
+        this.last = now;
+        if (m && m.length > 1) {
+            const n = m[0];
+            if (!this.dry || this.dry.length !== n) { this.dry = new Float32Array(n); this.tuned = new Float32Array(n); }
+            for (let c = 0; c < n; c++) {
+                this.dry[c] = Math.max(m[1 + c], this.dry[c] * decay);
+                this.tuned[c] = Math.max(m[1 + n + c], this.tuned[c] * decay);
+            }
+        } else if (this.dry) {
+            for (let c = 0; c < this.dry.length; c++) { this.dry[c] *= decay; this.tuned[c] *= decay; }
+        }
+
+        g.fillStyle = '#0b0b0d';
+        g.fillRect(0, 0, w, h);
+        const fmin = this.expanded ? KF_MIN_HZ : 100, fmax = this.expanded ? KF_MAX_HZ : 6000;
+        const lspan = Math.log(fmax / fmin);
+        const xOf = (hz) => (w * Math.log(hz / fmin)) / lspan;
+
+        // In-key pitch grid (brighter on the root, unless the scale is Custom)
+        const mask = this.keyMask(), fine = fx.get(fx.paramId('Fine'));
+        const root = Math.round(fx.get(fx.paramId('Root'))), custom = Math.round(fx.get(fx.paramId('Scale'))) === 19;
+        for (let mi = 12; mi < 136; mi++) {
+            if (!(mask & (1 << (mi % 12)))) continue;
+            const hz = 440 * Math.pow(2, (mi - 69 + fine * 0.01) / 12);
+            if (hz < fmin || hz > fmax) continue;
+            g.fillStyle = `rgba(255,255,255,${(mi % 12) === root && !custom ? 30 / 255 : 14 / 255})`;
+            g.fillRect(Math.round(xOf(hz)), 0, 1, h);
+        }
+
+        // Spectrum lines, one per column
+        if (this.dry) {
+            const n = this.dry.length, colSpan = Math.log(KF_MAX_HZ / KF_MIN_HZ) / n;
+            const thick = Math.max(1, (w * colSpan) / lspan);
+            for (const [vals, rgb] of [[this.dry, KF_DRY], [this.tuned, KF_TUNED]]) {
+                for (let c = 0; c < n; c++) {
+                    const t = level(vals[c]);
+                    if (t < 0.02) continue;
+                    const hz = KF_MIN_HZ * Math.exp(colSpan * (c + 0.5));
+                    if (hz < fmin || hz > fmax) continue;
+                    g.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${Math.pow(t, 1.4)})`;
+                    g.fillRect(xOf(hz) - thick / 2, 0, thick, h);
+                }
+            }
+        }
+
+        // Shade outside the processed region
+        const lo = fx.get(fx.paramId('Low')), hi = Math.max(lo, fx.get(fx.paramId('High')));
+        const muted = fx.get(fx.paramId('Mute Sidebands')) >= 0.5;
+        const xlo = Math.min(w, Math.max(0, xOf(lo))), xhi = Math.min(w, Math.max(0, xOf(hi)));
+        g.fillStyle = `rgba(0,0,0,${(muted ? 200 : 130) / 255})`;
+        g.fillRect(0, 0, xlo, h);
+        g.fillRect(xhi, 0, w - xhi, h);
+        g.fillStyle = 'rgba(212,175,55,0.5)';
+        g.fillRect(Math.round(xlo), 0, 1, h);
+        g.fillRect(Math.round(xhi), 0, 1, h);
+
+        // Labels and the EXPAND button
+        g.font = '12px Cousine, monospace';
+        g.fillStyle = 'rgba(110,110,118,1)';
+        for (const [hz, txt] of [[50, '50'], [100, '100'], [200, '200'], [500, '500'], [1000, '1k'], [2000, '2k'], [5000, '5k'], [10000, '10k']]) {
+            if (hz <= fmin * 1.05 || hz >= fmax * 0.95) continue;
+            g.fillText(txt, xOf(hz) + 3, h - 6);
+        }
+        g.fillStyle = `rgb(${KF_DRY})`;
+        g.fillText('DRY', 10, 20);
+        g.fillStyle = `rgb(${KF_TUNED})`;
+        g.fillText('TUNED', 42, 20);
+        const b = [w - 70, 8, w - 8, 28];
+        this.button = b;
+        g.fillStyle = this.expanded ? 'rgba(212,175,55,0.25)' : 'rgba(28,28,30,0.9)';
+        g.strokeStyle = this.expanded ? '#d4af37' : '#3c3c42';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.roundRect(b[0] + 0.5, b[1] + 0.5, b[2] - b[0] - 1, b[3] - b[1] - 1, 4);
+        g.fill();
+        g.stroke();
+        g.font = '11px Cousine, monospace';
+        g.fillStyle = this.expanded ? '#d4af37' : 'rgba(180,180,188,1)';
+        g.fillText('EXPAND', b[0] + (b[2] - b[0] - g.measureText('EXPAND').width) / 2, b[1] + 14);
+    }
+}
+
 // ---- Garble: the effect's wavelet coefficients (wew_meter), drawn like the plugin's prism ----
 //
 // A port of GarbleView::rebuild_prism (plugins/garble/src/garble_view.cpp): one row per detail

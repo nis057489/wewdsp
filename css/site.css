@@ -161,6 +161,7 @@ details[open] summary::before { content: '− '; }
 .rack-head-right { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .rack-viz { display: block; width: calc(100% - 40px); margin: 4px 20px 0; height: 150px; background: var(--plot); border-radius: 8px; }
 .rack-viz.viz-constellation { height: auto; aspect-ratio: 1; }
+.rack-viz.viz-keyfield { cursor: default; }
 .rack-viz.viz-conform { width: 100%; margin: 4px 0 0; border-radius: 0; height: 300px; }
 .rack-grid { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); row-gap: 14px; padding: 18px 12px 8px; }
 .rack-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--border); flex-wrap: wrap; }

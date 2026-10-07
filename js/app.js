@@ -3,7 +3,7 @@
 import { ORDER, PLUGINS, SITE, INSTALL, HOSTS } from './content.js';
 import { Engine, SOURCES } from './audio.js';
 import { Knob, Toggle, Cycle, DragButton, Piano } from './controls.js';
-import { Spectra, SpectrumViz, PrismViz, ConstellationViz, ConformViz, HeroViz } from './viz.js';
+import { Spectra, SpectrumViz, KeyfieldViz, PrismViz, ConstellationViz, ConformViz, HeroViz } from './viz.js';
 
 const engine = new Engine();
 const spectra = new Spectra(engine);
@@ -108,6 +108,7 @@ class Rack {
             case 'prism': this.viz = new PrismViz(this.canvas, fx); break;
             case 'constellation': this.viz = new ConstellationViz(this.canvas, fx); break;
             case 'conform': this.viz = new ConformViz(this.canvas, fx); break;
+            case 'keyfield': this.viz = new KeyfieldViz(this.canvas, fx, () => this.piano.mask()); break;
             default:
                 this.viz = new SpectrumViz(this.canvas, spectra, accent, {
                     keyMask: this.piano ? () => this.piano.mask() : null,

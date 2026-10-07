@@ -56,7 +56,7 @@ export const PLUGINS = {
             ['Anything becomes tonal', 'Run noise or a drum loop through it and hear chords appear. Try the Glide source and listen to it step through the scale.'],
             ['Colour past 100 %', 'Up to 100 % Color is a dry/wet mix; beyond it, resonant filtering pulls the sound further into key.'],
         ],
-        viz: 'spectrum',
+        viz: 'keyfield',
         piano: true,
         columns: 6,
         header: [{ param: 'FFT Size', kind: 'cycle', prefix: 'FFT ', reprepare: true }],
