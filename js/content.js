@@ -49,7 +49,7 @@ export const PLUGINS = {
         accent: GOLD,
         subtitle: 'SPECTRAL KEY QUANTIZER',
         blurb: [
-            'A MIDI scale quantizer snaps notes into key. Keyfield does that to every frequency in the signal, so it works on anything: vocals, pads, drums, noise.',
+            'A MIDI scale quantizer snaps notes into key. Keyfield does that to every frequency in the signal, so it works on anything: vocals, chords, drums, noise.',
             'Each spectral peak and the bins around it move as one block onto the nearest in-key pitch, with phase-locked resynthesis. Click the keys to build your own scale.',
         ],
         points: [
