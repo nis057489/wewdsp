@@ -81,10 +81,10 @@ export const PLUGINS = {
         subtitle: 'SPECTRAL CONSTELLATION QUANTIZER',
         blurb: [
             'Constellate treats every FFT bin as a point on a radio receiver\'s IQ diagram and snaps it onto a QAM constellation grid, the way digital modems pack bits into a carrier.',
-            'Low orders turn sound into a handful of hard-edged states; high orders are nearly transparent. Cluster blends between clean snapping and a scattered, gated cloud.',
+            'Low orders turn sound into a handful of hard-edged states; higher orders keep more of the quieter detail, while the loudest bins are always pinned to the grid\'s edge. Cluster blends between clean snapping and a scattered, gated cloud.',
         ],
         points: [
-            ['Order', '2-QAM to 4096-QAM: the resolution of the grid every bin is forced onto. 4096-QAM is what Wi-Fi 7 uses.'],
+            ['Order', '4-QAM to 256-QAM: the resolution of the grid every bin is forced onto.'],
             ['Cluster', 'At 100 % bins snap cleanly. Lower, they scatter in blue noise and fade toward silence when far from a grid point.'],
         ],
         viz: 'constellation',
