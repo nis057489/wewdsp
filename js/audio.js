@@ -66,6 +66,9 @@ export class Engine {
 
     // Resumes audio; must run from a user gesture.
     async start() {
+        // iOS mutes Web Audio under the silent switch unless the page is a playback session
+        // (Safari 17+), the way video and music apps are.
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';
         this.init();
         if (this.ctx.state !== 'running') await this.ctx.resume();
     }
