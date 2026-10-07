@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>wewdsp — strange, free audio plugins</title>
+    <meta name="description" content="Garble, Keyfield, Constellate and Conform: free CLAP and VST3 audio plugins for macOS, Windows and Linux. Try them in your browser.">
+    <meta name="theme-color" content="#111111">
+    <meta property="og:title" content="wewdsp — strange, free audio plugins">
+    <meta property="og:description" content="Try Garble, Keyfield, Constellate and Conform in your browser, then download them for your DAW.">
+    <meta property="og:image" content="img/garble.png">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-24 -24 48 48'%3E%3Ccircle r='22' fill='%23111'/%3E%3Cpath d='M-12 12A17 17 0 1 1 12 12' fill='none' stroke='%23d4af37' stroke-width='4' stroke-linecap='round'/%3E%3Ccircle cx='6' cy='-7' r='3' fill='%23d4af37'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cousine:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/site.css">
+    <script type="module" src="js/app.js"></script>
+</head>
+<body>
+    <a class="skip" href="#plugins">Skip to the plugins</a>
+
+    <nav class="nav" aria-label="Site">
+        <a class="wordmark nav-mark" href="#top">w<em>e</em>wdsp</a>
+        <div class="nav-links">
+            <a href="#plugins">Plugins</a>
+            <a href="#download">Download</a>
+        </div>
+    </nav>
+
+    <header id="top" class="hero">
+        <canvas id="hero-canvas" aria-hidden="true"></canvas>
+        <div id="hero-content" class="hero-content"></div>
+        <a class="hero-scroll" href="#plugins" aria-label="Scroll to the plugins"></a>
+    </header>
+
+    <main id="plugins" class="plugins">
+        <noscript><p class="muted">The plugin demos need JavaScript and Web Audio.</p></noscript>
+    </main>
+
+    <section id="download" class="download">
+        <div class="download-inner">
+            <p class="eyebrow">Free. No account, no licence keys, no royalties.</p>
+            <h2 class="section-title">Download</h2>
+            <div id="download-content"></div>
+        </div>
+    </section>
+
+    <footer class="site-foot">
+        <span>© <span id="year"></span> wewdsp · Made by wew</span>
+        <span><a href="mailto:hello@nbembedded.com">hello@nbembedded.com</a> · CLAP · VST3 · macOS · Windows · Linux</span>
+    </footer>
+
+    <div class="drop-overlay" aria-hidden="true"><span>Drop audio to play it through the plugins</span></div>
+</body>
+</html>
