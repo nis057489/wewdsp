@@ -5,7 +5,8 @@
 //   {type: 'prepare'}            re-prepare, for parameters that apply on prepare (FFT size)
 //   {type: 'reset'}              clear the effect's internal state
 //   {type: 'call', name, args}   call a plugin export with (instance, ...args)
-//   {type: 'mod', bytes}         replace the LFOs' shapes and routes (wew_mod_save's bytes)
+//   {type: 'load', name, bytes}  call ex[name](instance, bytes pointer, length), e.g. to copy the
+//                                LFOs' settings (wew_mod_load) or a plugin's own data across
 //   {type: 'destroy'}            free the instance; the processor then stops
 // and reports {type: 'ready' | 'latency', latency} (samples) back. Modules that export
 // wew_meter also get {type: 'meter', data: Float32Array} about 30 times a second, and
@@ -61,10 +62,11 @@ class WewEffectProcessor extends AudioWorkletProcessor {
             case 'call':
                 if (typeof ex[m.name] === 'function') ex[m.name](this.inst, ...(m.args || []));
                 break;
-            case 'mod': {
+            case 'load': {
+                if (typeof ex[m.name] !== 'function') break;
                 const ptr = ex.wew_malloc(m.bytes.length || 1);
                 new Uint8Array(ex.memory.buffer, ptr, m.bytes.length).set(m.bytes);
-                ex.wew_mod_load(this.inst, ptr, m.bytes.length);
+                ex[m.name](this.inst, ptr, m.bytes.length);
                 ex.wew_free(ptr);
                 break;
             }

@@ -172,6 +172,7 @@ export class Toggle extends ParamControl {
     constructor(parent, fx, id, opts, onchange) {
         super(fx, id, opts, onchange);
         this.root = el('div', 'ctl toggle', parent);
+        this.root.dataset.param = id;
         this.btn = el('button', 'toggle-pill', this.root);
         this.btn.setAttribute('role', 'switch');
         this.btn.setAttribute('aria-label', opts.label || this.p.name);

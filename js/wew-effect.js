@@ -7,6 +7,9 @@
 //   fx.get(id), fx.format(id, value), fx.latency, fx.onlatency = (samples) => {}
 //   fx.meter, fx.onmeter    // latest wew_meter data from the audio thread, if the plugin has it
 //   fx.call(name, ...args)  // a plugin export on the audio thread's instance
+//   fx.load(name, bytes)    // ex[name](instance, pointer, length) on the audio thread's instance
+//   fx.save(name)           // ex[name](instance, pointer, max) on the main thread -> Uint8Array
+//   fx.shape(ptr, changed)  // a breakpoint shape in the main-thread module: see WewShape
 //   fx.exports              // the main-thread module, with withBytes / floats / string helpers
 //   fx.lfo                  // the LFOs (null if the effect has none): see WewLfos
 //
@@ -108,6 +111,15 @@ export class WewEffect {
     // Calls a plugin export on the audio thread's instance: ex[name](instance, ...args).
     call(name, ...args) { this.node.port.postMessage({ type: 'call', name, args }); }
 
+    // Bytes across: save from the main-thread instance, load into the audio thread's.
+    save(name) {
+        const n = this.ex[name](this.inst, this.scratch, 4096);
+        return new Uint8Array(this.ex.memory.buffer, this.scratch, n).slice();
+    }
+    load(name, bytes) { this.node.port.postMessage({ type: 'load', name, bytes }); }
+
+    shape(ptr, changed) { return new WewShape(this, ptr, changed); }
+
     param(id) { return this.info.params[id]; }
     paramId(name) { return this.info.params.findIndex((p) => p.name === name); }
     get(id) { return this.values[id]; }
@@ -158,16 +170,9 @@ export class WewLfos {
     value(lfo) { return this.state[2 * lfo + 1]; }
 
     // ---- Shape ----
-    shapeAt(lfo, phase) { return this.#ex.wew_lfo_value(this.#inst, lfo, phase); }
-    points(lfo) {
-        const n = this.#ex.wew_lfo_points(this.#inst, lfo, this.fx.scratch, 64 * 3);
-        const f = new Float32Array(this.#ex.memory.buffer, this.fx.scratch, n * 3);
-        return Array.from({ length: n }, (_, i) => ({ x: f[3 * i], y: f[3 * i + 1], curve: f[3 * i + 2] }));
+    shape(lfo) {
+        return this.fx.shape(this.#ex.wew_lfo_shape(this.#inst, lfo), () => { this.#ex.wew_mod_apply(this.#inst); this.#sync(); });
     }
-    insert(lfo, x, y) { const i = this.#ex.wew_lfo_insert(this.#inst, lfo, x, y); this.#sync(); return i; }
-    remove(lfo, point) { this.#ex.wew_lfo_remove(this.#inst, lfo, point); this.#sync(); }
-    move(lfo, point, x, y) { this.#ex.wew_lfo_move(this.#inst, lfo, point, x, y); this.#sync(); }
-    bend(lfo, point, curve) { this.#ex.wew_lfo_bend(this.#inst, lfo, point, curve); this.#sync(); }
     preset(lfo, preset) { this.#ex.wew_lfo_preset(this.#inst, lfo, preset); this.#sync(); }
     isPreset(lfo, preset) { return !!this.#ex.wew_lfo_is_preset(this.#inst, lfo, preset); }
 
@@ -198,8 +203,28 @@ export class WewLfos {
     }
 
     // Copies the shapes and routes to the audio thread.
-    #sync() {
-        const n = this.#ex.wew_mod_save(this.#inst, this.fx.scratch, 4096);
-        this.fx.node.port.postMessage({ type: 'mod', bytes: new Uint8Array(this.#ex.memory.buffer, this.fx.scratch, n).slice() });
+    #sync() { this.fx.load('wew_mod_load', this.fx.save('wew_mod_save')); }
+}
+
+// A breakpoint shape (wew::LfoShape) in the main-thread module: an LFO's (fx.lfo.shape) or a
+// plugin's own. changed() runs after every edit, to apply it and copy it to the audio thread.
+export class WewShape {
+    constructor(fx, ptr, changed) {
+        this.fx = fx;
+        this.ptr = ptr;
+        this.changed = changed;
     }
+
+    get #ex() { return this.fx.ex; }
+
+    value(x) { return this.#ex.wew_shape_value(this.ptr, x); }
+    points() {
+        const n = this.#ex.wew_shape_points(this.ptr, this.fx.scratch, 64 * 3);
+        const f = new Float32Array(this.#ex.memory.buffer, this.fx.scratch, n * 3);
+        return Array.from({ length: n }, (_, i) => ({ x: f[3 * i], y: f[3 * i + 1], curve: f[3 * i + 2] }));
+    }
+    insert(x, y) { const i = this.#ex.wew_shape_insert(this.ptr, x, y); this.changed(); return i; }
+    remove(point) { this.#ex.wew_shape_remove(this.ptr, point); this.changed(); }
+    move(point, x, y) { this.#ex.wew_shape_move(this.ptr, point, x, y); this.changed(); }
+    bend(point, curve) { this.#ex.wew_shape_bend(this.ptr, point, curve); this.changed(); }
 }

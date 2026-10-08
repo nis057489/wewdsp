@@ -6,6 +6,7 @@ import { Knob, Toggle, Cycle, DragButton, Piano } from './controls.js';
 import { Spectra, SpectrumViz, KeyfieldViz, PrismViz, ConstellationViz, ConformViz, HeroViz } from './viz.js';
 import { h, wordmark } from './dom.js';
 import { LfoPanel } from './lfo.js';
+import { ShaperPanel } from './shaper.js';
 
 const engine = new Engine();
 const spectra = new Spectra(engine);
@@ -73,7 +74,11 @@ class Rack {
             h('div', {}, wordmark(plugin.name, 1, 'wordmark rack-wordmark'), h('div', { class: 'rack-sub' }, cfg.subtitle || plugin.tagline.toUpperCase())),
             headRight));
 
-        if (cfg.viz !== 'prism') {
+        if (cfg.viz === 'shaper') {
+            this.shaper = new ShaperPanel(this, fx);
+            this.canvas = this.shaper.el; // what visibility is tracked on
+            main.append(this.shaper.el);
+        } else if (cfg.viz !== 'prism') {
             this.canvas = h('canvas', { class: `rack-viz viz-${cfg.viz || 'spectrum'}`, 'aria-hidden': 'true' });
             main.append(this.canvas);
         }
@@ -102,6 +107,7 @@ class Rack {
             case 'constellation': this.viz = new ConstellationViz(this.canvas, fx); break;
             case 'conform': this.viz = new ConformViz(this.canvas, fx); break;
             case 'keyfield': this.viz = new KeyfieldViz(this.canvas, fx, () => this.piano.mask()); break;
+            case 'shaper': this.viz = this.shaper; break;
             default:
                 this.viz = new SpectrumViz(this.canvas, spectra, accent, {
                     keyMask: this.piano ? () => this.piano.mask() : null,
@@ -152,6 +158,7 @@ class Rack {
     update() {
         this.controls.forEach((c) => c.update());
         this.piano?.update();
+        this.shaper?.update();
         if (this.lfoPanel) {
             this.lfoPanel.update();
             const lfo = this.fx.lfo;

@@ -2,7 +2,7 @@
 // from plugins/<slug>/plugin.json (via plugins.json, written by scripts/site.sh); a plugin
 // with no entry here still gets a section, with knobs for all of its parameters.
 
-export const ORDER = ['garble', 'keyfield', 'constellate', 'conform'];
+export const ORDER = ['garble', 'keyfield', 'constellate', 'shaper', 'conform'];
 
 export const SITE = {
     title: 'wewdsp',
@@ -91,6 +91,31 @@ export const PLUGINS = {
         columns: 3,
         controls: [{ param: 'Order' }, { param: 'Cluster' }, { param: 'Dry/Wet' }],
         source: 'chords',
+    },
+    shaper: {
+        accent: GOLD,
+        subtitle: 'SIDECHAIN VOLUME SHAPER',
+        blurb: [
+            'Shaper turns the volume down and back up in time with the music: the sidechain pump, drawn exactly. Draw the curve over a live view of the signal and watch the result underneath it.',
+            'Split it at a crossover to pump only the lows while the highs carry on. The bands come from a Linkwitz-Riley crossover, so they stay in phase however differently you shape them.',
+        ],
+        points: [
+            ['Three ways to pump', 'Sync repeats the curve with the tempo. Trigger plays it on every hit the detector hears. Follow skips the curve and ducks with an envelope follower: auto sidechain.'],
+            ['Kick on the sidechain', 'In your DAW, send the kick to Shaper\'s sidechain input. Here in the browser it listens to the loop it is shaping.'],
+        ],
+        viz: 'shaper',
+        columns: 4,
+        controls: [
+            { param: 'Rate' },
+            { param: 'Depth' },
+            { param: 'Smooth' },
+            { param: 'Threshold' },
+            { param: 'Attack' },
+            { param: 'Release' },
+            { param: 'Split', kind: 'toggle' },
+            { param: 'Crossover' },
+        ],
+        source: 'drums',
     },
     conform: {
         accent: GOLD,
