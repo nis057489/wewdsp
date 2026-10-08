@@ -1,7 +1,10 @@
 // Editor controls bound to a WewEffect parameter, drawn like the native editors
 // (libs/wew_gui/src/widgets.cpp). Every value control behaves like the plugin's:
 // vertical drag (150 px for the full range, 750 px with Shift), double-click resets to the
-// default, and arrow keys / Page Up / Page Down / Home / End when focused.
+// default, and arrow keys / Page Up / Page Down / Home / End when focused. Knobs show the
+// sweep of any LFO routed to them (updateMod, every frame).
+
+import { ParamFlags } from './wew-effect.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -47,7 +50,7 @@ class ParamControl {
         this.fx = fx;
         this.id = id;
         this.p = fx.param(id);
-        this.log = !!opts.log;
+        this.log = !!opts.log || !!(this.p.flags & ParamFlags.log);
         this.onchange = onchange;
     }
 
@@ -130,6 +133,9 @@ export class Knob extends ParamControl {
         this.valueArc = svgEl('path', { class: 'knob-value' }, svg);
         svgEl('circle', { r: 11, class: 'knob-centre' }, svg);
         this.dot = svgEl('circle', { r: 1.8, class: 'knob-dot' }, svg);
+        this.modArc = svgEl('path', { class: 'knob-mod' }, svg);
+        this.modDot = svgEl('circle', { r: 2.2, class: 'knob-mod-dot' }, svg);
+        this.root.dataset.param = id; // a drop target for LFO routes
         el('div', 'ctl-label', this.root).textContent = opts.label || this.p.name;
         this.value = el('div', 'ctl-value', this.root);
         this.root.setAttribute('aria-label', opts.label || this.p.name);
@@ -146,6 +152,19 @@ export class Knob extends ParamControl {
         this.dot.setAttribute('cy', (9 * Math.sin(a)).toFixed(3));
         this.value.textContent = this.fx.format(this.id);
         this.aria(this.root);
+        this.updateMod();
+    }
+
+    // The LFO sweep: an arc over the range the routes cover and a dot where they have it now.
+    updateMod() {
+        const r = this.fx.lfo?.range(this.id);
+        this.modArc.style.display = this.modDot.style.display = r ? '' : 'none';
+        if (!r) return;
+        const angle = (v) => START + toNorm(this.p, v, this.log) * (END - START);
+        const a0 = angle(r.lo), a1 = Math.max(angle(r.hi), a0 + 0.02), an = angle(r.now);
+        this.modArc.setAttribute('d', arcPath(20.5, a0, a1));
+        this.modDot.setAttribute('cx', (20.5 * Math.cos(an)).toFixed(3));
+        this.modDot.setAttribute('cy', (20.5 * Math.sin(an)).toFixed(3));
     }
 }
 

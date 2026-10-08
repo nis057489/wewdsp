@@ -4,6 +4,8 @@ import { ORDER, PLUGINS, SITE, INSTALL, HOSTS } from './content.js';
 import { Engine, SOURCES } from './audio.js';
 import { Knob, Toggle, Cycle, DragButton, Piano } from './controls.js';
 import { Spectra, SpectrumViz, KeyfieldViz, PrismViz, ConstellationViz, ConformViz, HeroViz } from './viz.js';
+import { h, wordmark } from './dom.js';
+import { LfoPanel } from './lfo.js';
 
 const engine = new Engine();
 const spectra = new Spectra(engine);
@@ -12,24 +14,6 @@ const visible = new Set(); // canvases on screen
 let userPickedSource = false;
 
 const $ = (sel, root = document) => root.querySelector(sel);
-function h(tag, attrs = {}, ...children) {
-    const e = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs)) {
-        if (v === null || v === undefined || v === false) continue;
-        if (k === 'class') e.className = v;
-        else if (k === 'html') e.innerHTML = v;
-        else if (k === 'style' && typeof v === 'object') Object.entries(v).forEach(([p, val]) => e.style.setProperty(p, val));
-        else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
-        else e.setAttribute(k, v === true ? '' : v);
-    }
-    for (const c of children.flat(Infinity)) if (c !== null && c !== undefined && c !== false) e.append(c.nodeType ? c : document.createTextNode(c));
-    return e;
-}
-
-// "Garble" with its accent letter (index 1, as in the editors)
-function wordmark(name, accent = 1, cls = 'wordmark') {
-    return h('span', { class: cls }, name.slice(0, accent), h('em', {}, name.slice(accent, accent + 1)), name.slice(accent + 1));
-}
 
 function detectOS() {
     const p = (navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || '').toLowerCase();
@@ -66,32 +50,41 @@ class Rack {
         const { plugin, cfg } = this;
         const onchange = () => this.update();
         this.el.replaceChildren();
+        // The editor itself, and for a plugin with LFOs their tab, laid over it at its size.
+        const main = h('div', { class: 'rack-pane' });
+        const body = h('div', { class: 'rack-body' }, main);
+        this.panes = { main };
+        if (fx.lfo) {
+            this.lfoPanel = new LfoPanel(this, fx, plugin);
+            this.panes.lfo = this.lfoPanel.el;
+            body.append(this.lfoPanel.el);
+        }
 
         if (cfg.viz === 'prism') {
             this.canvas = h('canvas', { class: 'rack-prism', 'aria-hidden': 'true' });
-            this.el.append(this.canvas);
+            main.append(this.canvas);
         }
         this.play = h('button', { class: 'rack-play', onclick: () => togglePlay(this.slug), 'aria-label': `Play through ${plugin.name}` },
             h('span', { class: 'icon' }), h('span', { class: 'rack-play-text' }, 'Play'));
         const headRight = h('div', { class: 'rack-head-right' });
         for (const c of cfg.header || []) this.#control(headRight, c, onchange);
         headRight.append(this.play);
-        this.el.append(h('header', { class: 'rack-head' },
+        main.append(h('header', { class: 'rack-head' },
             h('div', {}, wordmark(plugin.name, 1, 'wordmark rack-wordmark'), h('div', { class: 'rack-sub' }, cfg.subtitle || plugin.tagline.toUpperCase())),
             headRight));
 
         if (cfg.viz !== 'prism') {
             this.canvas = h('canvas', { class: `rack-viz viz-${cfg.viz || 'spectrum'}`, 'aria-hidden': 'true' });
-            this.el.append(this.canvas);
+            main.append(this.canvas);
         }
-        if (cfg.piano) this.piano = new Piano(this.el, fx, onchange);
+        if (cfg.piano) this.piano = new Piano(main, fx, onchange);
 
         if (cfg.columns !== 0) {
             const grid = h('div', { class: 'rack-grid', style: { '--cols': cfg.columns || 3 } });
             const controls = cfg.controls?.length ? cfg.controls
-                : fx.info.params.map((p) => ({ param: p.name })); // any plugin: one knob per parameter
+                : fx.info.params.slice(0, fx.lfo?.first).map((p) => ({ param: p.name })); // any plugin: a knob per parameter
             for (const c of controls) this.#control(grid, c, onchange);
-            this.el.append(grid);
+            main.append(grid);
         }
         if (cfg.footer) {
             this.note = h('span', { class: 'rack-bar-note' });
@@ -99,9 +92,9 @@ class Rack {
             const right = h('div', { class: 'rack-bar-right' });
             for (const c of cfg.footer) this.#control(right, c, onchange);
             bar.append(right);
-            this.el.append(bar);
+            main.append(bar);
         }
-        this.el.append(h('footer', { class: 'rack-foot' }, h('span', {}, `V${plugin.version}`), h('span', {}, SITE.credit)));
+        this.el.append(body, h('footer', { class: 'rack-foot' }, h('span', {}, `V${plugin.version}`), this.#tabs(), h('span', {}, SITE.credit)));
 
         const accent = cfg.accent;
         switch (cfg.viz) {
@@ -123,6 +116,26 @@ class Rack {
         this.update();
     }
 
+    // MAIN / LFO in the footer, for a plugin with LFOs.
+    #tabs() {
+        if (!this.lfoPanel) return null;
+        this.tabButtons = ['main', 'lfo'].map((t) => h('button', { class: 'rack-tab', role: 'tab', 'data-tab': t,
+            onclick: () => this.showTab(t) }, t.toUpperCase()));
+        this.lfoDot = h('span', { class: 'rack-tab-dot', 'aria-hidden': 'true' });
+        this.tabButtons[1].append(this.lfoDot);
+        this.showTab('main');
+        return h('div', { class: 'rack-tabs', role: 'tablist' }, this.tabButtons);
+    }
+
+    showTab(tab) {
+        for (const [t, pane] of Object.entries(this.panes)) {
+            pane.classList.toggle('off', t !== tab);
+            pane.inert = t !== tab;
+        }
+        this.tabButtons?.forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === tab));
+        if (tab === 'lfo') this.lfoPanel.update();
+    }
+
     #control(parent, c, onchange) {
         if (c.kind === 'reset') {
             const b = h('button', { class: 'pill-btn icon-btn', title: 'Restart the long-term average', 'aria-label': 'Reset average',
@@ -139,6 +152,11 @@ class Rack {
     update() {
         this.controls.forEach((c) => c.update());
         this.piano?.update();
+        if (this.lfoPanel) {
+            this.lfoPanel.update();
+            const lfo = this.fx.lfo;
+            this.lfoDot.classList.toggle('on', lfo.routes().some((r) => lfo.on(r.lfo)));
+        }
         if (this.note && this.viz?.note) this.note.textContent = this.viz.note();
         const on = engine.active === this.slug && engine.playing;
         this.el.classList.toggle('active', engine.active === this.slug);
@@ -149,6 +167,10 @@ class Rack {
 
     draw() {
         if (this.viz && visible.has(this.canvas)) this.viz.draw(engine.active === this.slug);
+        if (this.lfoPanel && visible.has(this.canvas)) {
+            this.controls.forEach((c) => c.updateMod?.());
+            this.lfoPanel.draw();
+        }
     }
 }
 
