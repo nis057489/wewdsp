@@ -1,10 +1,13 @@
 // Contour's editor on the site, as in the plugin (plugins/contour/src/contour_view.cpp): the EQ
 // display (analyzer, the bands' curves, draggable numbered nodes) over the selected band's
-// controls. The curves come from the plugin's own filter designs (contour_curves).
+// controls. The curves come from the plugin's own filter designs (contour_curves). Type and
+// Stereo are dropdowns; right-click a band for its type, bypass and removal, or empty space to add
+// a band of a chosen type.
 
 import { h } from './dom.js';
 import { Knob, Toggle } from './controls.js';
 import { svg } from './shape-editor.js';
+import { openMenu } from './menu.js';
 
 const BANDS = 16, BAND_PARAMS = 10;
 const P = { used: 0, type: 1, freq: 2, gain: 3, q: 4, slope: 5, stereo: 6, range: 7, threshold: 8, bypass: 9 };
@@ -16,6 +19,18 @@ const hasGain = (t) => t === 0 || t === 1 || t === 2 || t === TILT;
 const hasSlope = (t) => t === LOW_CUT || t === HIGH_CUT;
 const COLS = 256, N = 200; // analyzer columns; curve points
 const DB_RANGE = 18, FLOOR = -90;
+// Each type's shape for the menus, in a 26 x 14 box (as the plugin draws them)
+const TYPE_ICONS = [
+    'M0 9H7C10 9 11 2.5 13 2.5S16 9 19 9H26',
+    'M0 3H5C9 3 11 9 15 9H26',
+    'M0 9H11C15 9 17 3 21 3H26',
+    'M1 13C4 6 7 4 11 4H26',
+    'M0 4H15C19 4 22 6 25 13',
+    'M0 4H10C12 4 12.5 13 13 13S14 4 16 4H26',
+    'M0 13C6 13 10 4 13 4S20 13 26 13',
+    'M0 11C8 11 18 3 26 3',
+];
+const typeIcon = (t) => { const e = svg('svg', { viewBox: '0 0 26 14', width: 26, height: 14 }); svg('path', { d: TYPE_ICONS[t] }, e); return e; };
 const KNOBS = [['freq', 'Freq'], ['gain', 'Gain'], ['q', 'Q'], ['slope', 'Slope'], ['range', 'Range'], ['threshold', 'Threshold']];
 
 const id = (b, p) => b * BAND_PARAMS + P[p];
@@ -40,18 +55,18 @@ export class ContourPanel {
         this.curve = svg('path', { class: 'eq-curve' }, this.svg);
         this.live = svg('path', { class: 'eq-live' }, this.svg);
         this.nodes = svg('g', {}, this.svg);
-        this.display = h('div', { class: 'eq-display', title: 'Double-click to add a band · drag a band to move it · scroll over it to change its Q · double-click it to remove it' }, this.svg);
+        this.display = h('div', { class: 'eq-display', title: 'Double-click to add a band · right-click to pick its type · drag a band to move it · scroll over it to change its Q · double-click it to remove it' }, this.svg);
         new ResizeObserver(() => this.#layout()).observe(this.display);
         this.#bindDisplay();
 
         // Band panel: the selected band, then the dynamics shared by every band
         this.title = h('span', { class: 'eq-title' });
         this.remove = h('button', { class: 'eq-remove', 'aria-label': 'Remove band', onclick: () => this.#set(id(this.selected, 'used'), 0) }, '×');
-        this.typeBtn = h('button', { class: 'pill-btn', onclick: () => this.#cycle('type', TYPES.length) });
-        this.stereoBtn = h('button', { class: 'pill-btn', onclick: () => this.#cycle('stereo', STEREO.length) });
+        this.typeBtn = h('button', { class: 'pill-btn dropdown', 'aria-haspopup': 'menu', onclick: () => this.#dropdown(this.typeBtn, 'type') });
+        this.stereoBtn = h('button', { class: 'pill-btn dropdown', 'aria-haspopup': 'menu', onclick: () => this.#dropdown(this.stereoBtn, 'stereo') });
         this.bypassBtn = h('button', { class: 'pill-btn', onclick: () => this.#set(id(this.selected, 'bypass'), this.fx.get(id(this.selected, 'bypass')) >= 0.5 ? 0 : 1) }, 'Bypass');
         this.bandKnobs = h('div', { class: 'eq-knobs' });
-        this.hint = h('p', { class: 'eq-hint' }, 'Double-click the display to add a band. Drag a band to move it; scroll over it to change its Q.');
+        this.hint = h('p', { class: 'eq-hint' }, 'Double-click the display to add a band, or right-click it to pick its type. Drag a band to move it; scroll for Q.');
         this.bandBox = h('div', { class: 'eq-band' },
             h('div', { class: 'eq-band-side' }, h('div', { class: 'eq-band-head' }, this.title, this.remove), this.typeBtn, this.stereoBtn, this.bypassBtn),
             this.bandKnobs);
@@ -72,7 +87,40 @@ export class ContourPanel {
         this.rack.update();
     }
 
-    #cycle(p, count) { this.#set(id(this.selected, p), (Math.round(this.fx.get(id(this.selected, p))) + 1) % count); }
+    // ---- Menus ----
+
+    #typeItems(current, choose) {
+        return TYPES.map((label, t) => ({ label, checked: t === current, icon: typeIcon(t), action: () => choose(t) }));
+    }
+
+    #dropdown(btn, p) {
+        const b = this.selected;
+        if (b < 0) return;
+        const set = (v) => this.#set(id(b, p), v);
+        const current = Math.round(this.fx.get(id(b, p)));
+        const items = p === 'type' ? this.#typeItems(current, set)
+            : STEREO.map((label, v) => ({ label, checked: v === current, action: () => set(v) }));
+        btn.classList.add('open');
+        openMenu(this.el, items, { from: btn }, () => btn.classList.remove('open'));
+    }
+
+    #contextMenu(e, x, y) {
+        const b = this.#nodeAt(x, y);
+        let items;
+        if (b >= 0) {
+            if (b !== this.selected) this.#select(b);
+            const s = this.band(b);
+            items = [
+                { label: `BAND ${b + 1}`, heading: true },
+                ...this.#typeItems(s.type, (t) => this.#set(id(b, 'type'), t)),
+                { label: 'Bypass', checked: s.bypass, rule: true, action: () => this.#set(id(b, 'bypass'), s.bypass ? 0 : 1) },
+                { label: 'Remove', action: () => this.#set(id(b, 'used'), 0) },
+            ];
+        } else {
+            items = [{ label: 'ADD BAND', heading: true }, ...this.#typeItems(-1, (t) => { this.#add(x, y, t); this.rack.update(); })];
+        }
+        openMenu(this.el, items, { x: e.clientX, y: e.clientY });
+    }
 
     band(b) {
         const g = (p) => this.fx.get(id(b, p));
@@ -159,6 +207,12 @@ export class ContourPanel {
             } else this.#add(x, y);
             this.rack.update();
         });
+        this.svg.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (drag >= 0) return;
+            const [x, y] = local(e);
+            this.#contextMenu(e, x, y);
+        });
         this.svg.addEventListener('wheel', (e) => {
             const [x, y] = local(e);
             let b = this.#nodeAt(x, y);
@@ -170,15 +224,16 @@ export class ContourPanel {
         }, { passive: false });
     }
 
-    #add(x, y) {
+    // type: from where it is if left out
+    #add(x, y, type) {
         let b = 0;
         while (b < BANDS && this.band(b).used) b++;
         if (b === BANDS) return;
         const hz = this.hzAt(x);
-        const type = hz < 40 ? LOW_CUT : hz > 12000 ? HIGH_CUT : BELL;
+        type ??= hz < 40 ? LOW_CUT : hz > 12000 ? HIGH_CUT : BELL;
         this.fx.set(id(b, 'type'), type);
         this.fx.set(id(b, 'freq'), clamp(hz, 10, 30000));
-        this.fx.set(id(b, 'gain'), type === BELL ? clamp(this.dbAt(y), -30, 30) : 0);
+        this.fx.set(id(b, 'gain'), hasGain(type) ? clamp(this.dbAt(y), -30, 30) : 0);
         this.fx.set(id(b, 'q'), type === BELL ? 1 : 0.70710678);
         this.fx.set(id(b, 'range'), 0);
         this.fx.set(id(b, 'bypass'), 0);

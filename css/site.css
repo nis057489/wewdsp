@@ -284,6 +284,34 @@ details[open] summary::before { content: '− '; }
 .eq-dyn .ctl { width: 66px; }
 .eq .ctl-label, .eq .ctl-value { font-size: 12px; }
 .eq-dyn { border-left: 1px solid var(--border); padding-left: 12px; }
+.eq { position: relative; }
+.eq-band-side .pill-btn.dropdown { position: relative; padding-right: 22px; }
+.pill-btn.dropdown::after {
+    content: ''; position: absolute; right: 9px; top: 50%; margin-top: -2px;
+    border: 4px solid transparent; border-top: 5px solid var(--dim); border-bottom: 0;
+}
+.pill-btn.dropdown.open { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 25%, var(--control-bg)); }
+.pill-btn.dropdown.open::after, .pill-btn.dropdown.on::after { border-top-color: var(--accent); }
+
+/* Popup menus (js/menu.js), as in the plugins */
+.menu {
+    position: absolute; z-index: 30; display: flex; flex-direction: column; padding: 5px 0;
+    background: rgba(24, 24, 27, 0.98); border: 1px solid var(--control-border); border-radius: 5px;
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.35); font: 400 13px/1 var(--mono);
+}
+.menu-heading { padding: 6px 28px 4px 10px; color: var(--dim); letter-spacing: 0.06em; }
+.menu-rule { height: 1px; margin: 4px 6px; background: var(--border); }
+.menu-item {
+    display: flex; align-items: center; gap: 8px; margin: 0 4px; padding: 5px 28px 5px 6px; min-height: 24px;
+    font: inherit; color: var(--silver); background: none; border: 0; border-radius: 3px; text-align: left; cursor: pointer; position: relative; white-space: nowrap;
+}
+.menu-item:hover, .menu-item:focus-visible { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--platinum); outline: none; }
+.menu-item.on { color: var(--accent); }
+.menu-item.on::after { content: ''; position: absolute; right: 10px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--accent); }
+.menu-icon:empty { display: none; }
+.menu:has(.menu-icon:not(:empty)) .menu-icon:empty { display: block; width: 26px; }
+.menu-icon svg { display: block; }
+.menu-icon path { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 
 /* Knobs: an LFO's sweep, and the knob under a dragged LFO */
 .knob-mod { fill: none; stroke: color-mix(in srgb, var(--accent) 45%, transparent); stroke-width: 2; }
