@@ -2,7 +2,7 @@
 // from plugins/<slug>/plugin.json (via plugins.json, written by scripts/site.sh); a plugin
 // with no entry here still gets a section, with knobs for all of its parameters.
 
-export const ORDER = ['garble', 'keyfield', 'constellate', 'shaper', 'conform'];
+export const ORDER = ['garble', 'keyfield', 'constellate', 'shaper', 'contour', 'conform'];
 
 export const SITE = {
     title: 'wewdsp',
@@ -116,6 +116,28 @@ export const PLUGINS = {
             { param: 'Crossover' },
         ],
         source: 'drums',
+    },
+    contour: {
+        accent: BLUE,
+        wide: true, // the EQ takes the full width, under the words
+        subtitle: 'DYNAMIC EQ',
+        blurb: [
+            'Contour is a sixteen-band EQ that draws what it does: double-click to add a band, drag it where it should go, scroll for its width. Underneath, a live analyzer shows the mix before and after.',
+            'Any bell or shelf can be dynamic: give it a Range and it moves only when its own frequencies get loud, so a harsh note or a boomy bass hit is tamed without dulling everything else.',
+        ],
+        points: [
+            ['Filters that sound analog', 'Every band is matched to its analog response all the way to 20 kHz, so a bell up in the air keeps its shape instead of squeezing towards the top.'],
+            ['Placement and sidechain', 'Each band works in stereo, on one side, or on the mid or side signal; dynamic bands can listen to the sidechain instead, and an LFO tab can move any band.'],
+        ],
+        viz: 'eq',
+        columns: 0,
+        controls: [],
+        header: [
+            { param: 'Analyzer', kind: 'cycle', prefix: 'Analyzer: ' },
+            { param: 'Auto Gain', kind: 'cycle', prefix: 'Auto Gain: ' },
+            { param: 'Output', kind: 'drag', prefix: 'Out ' },
+        ],
+        source: 'demo',
     },
     conform: {
         accent: GOLD,

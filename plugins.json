@@ -1,6 +1,7 @@
 [
   {"slug": "conform", "name": "Conform", "version": "0.1.1", "tagline": "Tonal Balance Reference", "description": "Tonal balance meter against pink noise or a reference track", "category": "Analyzer", "status": "beta"},
   {"slug": "constellate", "name": "Constellate", "version": "0.4.0", "tagline": "Spectral Constellation Quantizer", "description": "Constellate — Spectral Constellation Quantizer", "category": "Distortion", "status": "beta"},
+  {"slug": "contour", "name": "Contour", "version": "0.1.0", "tagline": "Dynamic EQ", "description": "Sixteen-band dynamic EQ with a live analyzer", "category": "EQ", "status": "beta"},
   {"slug": "garble", "name": "Garble", "version": "0.14.0", "tagline": "Wavecrusher", "description": "Wavecrusher — Haar wavelet transform distortion", "category": "Distortion", "status": "released"},
   {"slug": "keyfield", "name": "Keyfield", "version": "0.2.0", "tagline": "Spectral Key Quantizer", "description": "Spectral key quantizer — snaps every frequency into key", "category": "Pitch", "status": "beta"},
   {"slug": "shaper", "name": "Shaper", "version": "0.1.0", "tagline": "Sidechain Volume Shaper", "description": "Draw the sidechain volume curve, or let it follow the kick", "category": "Dynamics", "status": "beta"}

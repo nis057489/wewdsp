@@ -1,35 +1,40 @@
 {
-  "generated": "2026-10-08T20:43:49Z",
+  "generated": "2026-10-09T08:40:59Z",
   "plugins": [
     {"slug": "conform", "name": "Conform", "version": "0.1.1", "downloads": {
-      "macos": {"file": "Conform-v0.1.1-macos.zip", "bytes": 3165254, "sha256": "bb695efc846dd71acbdfcc6e26f915aad487ac2b0ee71ebfe4c3d6834986151f"},
-      "linux": {"file": "Conform-v0.1.1-linux.zip", "bytes": 1837584, "sha256": "8f52be37f30580252521fec9717f24f7511d2c054d90240d0dfa1fa4a70a1e8a"},
-      "windows": {"file": "Conform-v0.1.1-windows.zip", "bytes": 3218531, "sha256": "ce9646d08144fc7a83ef590af41761b702c07438208e5b9d4145d617ce88b180"}
+      "macos": {"file": "Conform-v0.1.1-macos.zip", "bytes": 3166344, "sha256": "ae458c382e52d0133322e2b7017c24a3022bb29b7f996bbee5e42341f3fc685f"},
+      "linux": {"file": "Conform-v0.1.1-linux.zip", "bytes": 1837754, "sha256": "3c4fff03d3bb3a7a06cd2b271f59adf2b43bf1dea6482afae217f07a96b185e7"},
+      "windows": {"file": "Conform-v0.1.1-windows.zip", "bytes": 3218900, "sha256": "5ab1408684eb7ba0f0911023267d8492952c0ae02900ca8ce45c9c7fc2baeabe"}
     }},
     {"slug": "constellate", "name": "Constellate", "version": "0.4.0", "downloads": {
-      "macos": {"file": "Constellate-v0.4.0-macos.zip", "bytes": 2481091, "sha256": "f20288124aa6d51461ddc383a98803b6e632293e22e7bb3c93927e0ea805f498"},
-      "linux": {"file": "Constellate-v0.4.0-linux.zip", "bytes": 1475570, "sha256": "827ed30b660bcb03f6d46839799025aa4d17707e8fd43db1bf64a35e0a692bc5"},
-      "windows": {"file": "Constellate-v0.4.0-windows.zip", "bytes": 2486554, "sha256": "0a5896a658009b0ce6fbc7fca84a364417a3354ab4eae6b36c08562304820338"}
+      "macos": {"file": "Constellate-v0.4.0-macos.zip", "bytes": 2482341, "sha256": "c1e11b281687dd8606db5435e74a9f562e1089214d7e6c9170018bf9fdb2162b"},
+      "linux": {"file": "Constellate-v0.4.0-linux.zip", "bytes": 1476988, "sha256": "ac9f3c88dc9fb11f342f285c31b98bb09943283d3b04840f0dde794941a25bfa"},
+      "windows": {"file": "Constellate-v0.4.0-windows.zip", "bytes": 2486942, "sha256": "77d04c480cefa9e0184c9d8a06e043e112dfb4b614e1b50407328f70689a0935"}
+    }},
+    {"slug": "contour", "name": "Contour", "version": "0.1.0", "downloads": {
+      "macos": {"file": "Contour-v0.1.0-macos.zip", "bytes": 2545777, "sha256": "8f6989c52525af2d048e1963cf1b1e2167fc77ed7393d3d37bf74dc3275629f7"},
+      "linux": {"file": "Contour-v0.1.0-linux.zip", "bytes": 1510437, "sha256": "f839bc7d8073c0d1e19d9d5723d5ebbe1a1b64777d6a7e6c67fbc890e5b6a9a2"},
+      "windows": {"file": "Contour-v0.1.0-windows.zip", "bytes": 2516975, "sha256": "c1475603df68a5c379b0027fa2e37a228517a2f6a7c491f391cf7b2c6f0df083"}
     }},
     {"slug": "garble", "name": "Garble", "version": "0.14.0", "downloads": {
-      "macos": {"file": "Garble-v0.14.0-macos.zip", "bytes": 2498538, "sha256": "a06c4a91177c82cda3069610f44cf67fb2427a88b16f8c2b2f1a6d1fbda08158"},
-      "linux": {"file": "Garble-v0.14.0-linux.zip", "bytes": 1477188, "sha256": "6c312b7104df1798657d239d2c861e00260e686ef6ce6a660e62a9a3023d76ce"},
-      "windows": {"file": "Garble-v0.14.0-windows.zip", "bytes": 2492093, "sha256": "1836f54a440b100d778d70b9cfa79a5b2a798aecc178a065ab498e3dbe1932d2"}
+      "macos": {"file": "Garble-v0.14.0-macos.zip", "bytes": 2499148, "sha256": "5266cc1868f2a0db55c4be072362c0d4846194dfc51927e5df8cd59f5615d7d2"},
+      "linux": {"file": "Garble-v0.14.0-linux.zip", "bytes": 1477783, "sha256": "cdc92d1038308c16d7a18abfa673c748d1dce57e6fa778fb7a1fd19fcfbd4830"},
+      "windows": {"file": "Garble-v0.14.0-windows.zip", "bytes": 2492584, "sha256": "e99681fd73f616c170b42ca71e3cf4b6baef1edd0461646763c56d494b0ebb9b"}
     }},
     {"slug": "keyfield", "name": "Keyfield", "version": "0.2.0", "downloads": {
-      "macos": {"file": "Keyfield-v0.2.0-macos.zip", "bytes": 2525786, "sha256": "efba67b439dd243be506af5bbe1baa4747d47fd6b01936f11def91d3629f4f24"},
-      "linux": {"file": "Keyfield-v0.2.0-linux.zip", "bytes": 1502597, "sha256": "c3abd2d53a88ec78bfe305eaf56e9f31c705ec3f5f55c23fda4d8152abc4fab6"},
-      "windows": {"file": "Keyfield-v0.2.0-windows.zip", "bytes": 2510232, "sha256": "cf0f12a24cc5f08445d295d2dc325805a0f6c3748b0ae45b68d7585667b40c33"}
+      "macos": {"file": "Keyfield-v0.2.0-macos.zip", "bytes": 2526938, "sha256": "8dacfc4273670006bd4cfa2dd1e975733a683ad342ac76608578133bf3f379e2"},
+      "linux": {"file": "Keyfield-v0.2.0-linux.zip", "bytes": 1503491, "sha256": "05aebd6cfd0abbd4ab3fb226cafe4039bc6a6063d14f2f7abd1d816f6188ccf9"},
+      "windows": {"file": "Keyfield-v0.2.0-windows.zip", "bytes": 2511207, "sha256": "cb80f29e482735fd3e7d41b0ab7243ea8a4136664a1a20dc4e59ada0b19082e1"}
     }},
     {"slug": "shaper", "name": "Shaper", "version": "0.1.0", "downloads": {
-      "macos": {"file": "Shaper-v0.1.0-macos.zip", "bytes": 2504991, "sha256": "0d8061acf48be3b34dc6ba6f4d92e1feef3b78fb6fbba07fca9be5cc43572841"},
-      "linux": {"file": "Shaper-v0.1.0-linux.zip", "bytes": 1485642, "sha256": "c96d4946fc2f2d2d5b2a4c7d22a87ad717581628864ef3ce4ed59c68014420e4"},
-      "windows": {"file": "Shaper-v0.1.0-windows.zip", "bytes": 2492318, "sha256": "90dbeb3d987b3fdca8e6569d4e9a07090444415ab3e1aad234becf5aaf470e63"}
+      "macos": {"file": "Shaper-v0.1.0-macos.zip", "bytes": 2504162, "sha256": "788960155fb41c23a717fd8e72fd46ce66b9601033cc970d7c6602baf7a75a67"},
+      "linux": {"file": "Shaper-v0.1.0-linux.zip", "bytes": 1486124, "sha256": "2785ccff67ee67a0ae3ecabf0d6ffe4b9fc7dea293a71ad987f7aa105ee9dc51"},
+      "windows": {"file": "Shaper-v0.1.0-windows.zip", "bytes": 2493791, "sha256": "ca6ae8fe93dac17f6a669131f24b2fe5c9988692d5e1a38c5cc0c2312f7836a0"}
     }}
   ],
   "bundles": {
-    "macos": {"file": "wewdsp-macos.zip", "bytes": 13174048, "sha256": "ebd11f945fb52d860b210ab6a775330c817f40d487a85ed277a51da1979e0ba2"},
-    "linux": {"file": "wewdsp-linux.zip", "bytes": 7777357, "sha256": "a78e6d0c24dd8ed3423f73966fb956b0a57c637870a21514586bfc7ef7a10605"},
-    "windows": {"file": "wewdsp-windows.zip", "bytes": 13198560, "sha256": "e25ae561a21c9a8cbba3fd17d77e845ccf001e12f9546cad3972f8bf96c653fd"}
+    "macos": {"file": "wewdsp-macos.zip", "bytes": 15722695, "sha256": "7866ebed9767b1e1ee73f553c997d698e025edd9b2c2629b6849ff264832fc26"},
+    "linux": {"file": "wewdsp-linux.zip", "bytes": 9291047, "sha256": "4a8e98eb998ab80edd36b6eecf013712805f609be7ed5949fd5ab8f2c6b0e45c"},
+    "windows": {"file": "wewdsp-windows.zip", "bytes": 15718939, "sha256": "2f6dd057c13868be0ae13c0bbe15983ad18e0397d1a537b8e7caed1f828977df"}
   }
 }

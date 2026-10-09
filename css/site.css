@@ -152,6 +152,9 @@ details[open] summary::before { content: '− '; }
 }
 #garble .rack, #constellate .rack { --rack-w: 400px; }
 #keyfield .rack, #conform .rack, #shaper .rack { --rack-w: 560px; }
+#contour .rack { --rack-w: 800px; }
+.plugin.wide { grid-template-columns: minmax(0, 1fr); }
+.plugin.wide .plugin-rack { position: static; }
 .rack.active { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); box-shadow: 0 30px 90px -40px color-mix(in srgb, var(--accent) 55%, transparent); }
 .rack-loading { padding: 80px 24px; text-align: center; color: var(--dim); font-size: 13px; }
 .rack-prism { display: block; width: 100%; height: 72px; }
@@ -247,6 +250,40 @@ details[open] summary::before { content: '− '; }
 .scope-gain { fill: none; stroke: var(--accent); stroke-width: 2; }
 .scope-thr { stroke: var(--gold-bright); stroke-opacity: 0.45; }
 .scope-thr-label { fill: var(--gold-bright); font-size: 10px; letter-spacing: 0.06em; opacity: 0.8; }
+
+/* Contour */
+.eq-display { position: relative; height: 290px; margin: 4px 20px 0; background: var(--plot); border-radius: 4px; touch-action: none; }
+.eq-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.eq-grid line { stroke: #2a2a2e; stroke-width: 1; }
+.eq-grid line.zero { stroke: #3a3a40; }
+.eq-grid text { fill: var(--dim); font-size: 11px; }
+.eq-pre { fill: color-mix(in srgb, var(--silver) 10%, transparent); }
+.eq-post { fill: color-mix(in srgb, var(--accent) 16%, transparent); }
+.eq-reach path { fill: color-mix(in srgb, var(--accent) 9%, transparent); }
+.eq-fill { fill: color-mix(in srgb, var(--accent) 14%, transparent); }
+.eq-curve { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.eq-live { fill: none; stroke: var(--platinum); stroke-opacity: 0.85; stroke-width: 1.5; }
+.eq-node circle { fill: var(--bg); stroke: var(--accent); stroke-width: 1.5; cursor: grab; }
+.eq-node text { fill: var(--accent); font-size: 11px; pointer-events: none; }
+.eq-node.sel circle { fill: var(--accent); }
+.eq-node.sel text { fill: var(--bg); }
+.eq-node.off circle { stroke: var(--dim); }
+.eq-node.off text { fill: var(--dim); }
+.eq-panel { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; min-height: 124px; padding: 12px 20px 4px; }
+.eq-hint { flex: 1; margin: 18px 0 0; color: var(--dim); font-size: 13px; line-height: 1.6; }
+.eq-band { flex: 1; display: flex; gap: 12px; }
+.eq-band[hidden], .eq-hint[hidden] { display: none; }
+.eq-band-side { display: flex; flex-direction: column; gap: 6px; width: 104px; }
+.eq-band-side .pill-btn { padding: 3px 8px; font-size: 12px; text-align: center; }
+.eq-band-side .pill-btn.on { border-color: var(--accent); color: var(--accent); }
+.eq-band-head { display: flex; justify-content: space-between; align-items: center; }
+.eq-title { color: var(--accent); font-size: 13px; letter-spacing: 0.06em; }
+.eq-remove { background: none; border: 0; padding: 0 4px; font: inherit; font-size: 15px; color: var(--dim); cursor: pointer; }
+.eq-knobs, .eq-dyn { display: flex; flex-wrap: wrap; }
+.eq-knobs .ctl { width: 68px; }
+.eq-dyn .ctl { width: 66px; }
+.eq .ctl-label, .eq .ctl-value { font-size: 12px; }
+.eq-dyn { border-left: 1px solid var(--border); padding-left: 12px; }
 
 /* Knobs: an LFO's sweep, and the knob under a dragged LFO */
 .knob-mod { fill: none; stroke: color-mix(in srgb, var(--accent) 45%, transparent); stroke-width: 2; }

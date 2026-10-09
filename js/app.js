@@ -7,6 +7,7 @@ import { Spectra, SpectrumViz, KeyfieldViz, PrismViz, ConstellationViz, ConformV
 import { h, wordmark } from './dom.js';
 import { LfoPanel } from './lfo.js';
 import { ShaperPanel } from './shaper.js';
+import { ContourPanel } from './contour.js';
 
 const engine = new Engine();
 const spectra = new Spectra(engine);
@@ -78,6 +79,10 @@ class Rack {
             this.shaper = new ShaperPanel(this, fx);
             this.canvas = this.shaper.el; // what visibility is tracked on
             main.append(this.shaper.el);
+        } else if (cfg.viz === 'eq') {
+            this.eq = new ContourPanel(this, fx);
+            this.canvas = this.eq.el;
+            main.append(this.eq.el);
         } else if (cfg.viz !== 'prism') {
             this.canvas = h('canvas', { class: `rack-viz viz-${cfg.viz || 'spectrum'}`, 'aria-hidden': 'true' });
             main.append(this.canvas);
@@ -108,6 +113,7 @@ class Rack {
             case 'conform': this.viz = new ConformViz(this.canvas, fx); break;
             case 'keyfield': this.viz = new KeyfieldViz(this.canvas, fx, () => this.piano.mask()); break;
             case 'shaper': this.viz = this.shaper; break;
+            case 'eq': this.viz = this.eq; break;
             default:
                 this.viz = new SpectrumViz(this.canvas, spectra, accent, {
                     keyMask: this.piano ? () => this.piano.mask() : null,
@@ -159,6 +165,7 @@ class Rack {
         this.controls.forEach((c) => c.update());
         this.piano?.update();
         this.shaper?.update();
+        this.eq?.update();
         if (this.lfoPanel) {
             this.lfoPanel.update();
             const lfo = this.fx.lfo;
@@ -250,7 +257,7 @@ function renderPlugins(plugins, manifest, base) {
                 h('summary', {}, 'Listen: examples run through Garble'),
                 h('ul', {}, cfg.examples.map(([t, src]) => h('li', {}, h('span', {}, t), h('audio', { controls: true, preload: 'none', src }))))) : null,
         );
-        main.append(h('section', { class: 'plugin', id: p.slug, style: { '--accent': cfg.accent } }, copy, h('div', { class: 'plugin-rack' }, rack.el)));
+        main.append(h('section', { class: cfg.wide ? 'plugin wide' : 'plugin', id: p.slug, style: { '--accent': cfg.accent } }, copy, h('div', { class: 'plugin-rack' }, rack.el)));
     });
 }
 
